@@ -6,6 +6,9 @@ services:
     PayGreen\SyliusPayumPlugin\:
         resource: '../../'
 
+    PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculatorInterface:
+        alias: PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculator
+
     PayGreen\SyliusPayumPlugin\Payum\Factory\PayGreenGatewayFactory:
         tags:
             - { name: payum.gateway_factory, factory: paygreen }
@@ -36,6 +39,10 @@ services:
         tags:
             - { name: sylius.gateway_configuration_type, type: paygreen, label: PayGreen }
             - { name: form.type }
+
+    PayGreen\SyliusPayumPlugin\Form\Extension\ProductVariantTypeExtension:
+        tags:
+            - { name: form.type_extension }
 
     PayGreen\SyliusPayumPlugin\Controller\ReturnController:
         public: true

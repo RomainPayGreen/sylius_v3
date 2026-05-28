@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace PayGreen\SyliusPayumPlugin\Tests\Bridge\PayGreen;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Paygreen\Sdk\Payment\V3\Enum\PlatformEnum;
+use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculator;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\PaymentOrderBuilder;
+use PayGreen\SyliusPayumPlugin\Entity\MealVoucherAwareInterface;
 use PHPUnit\Framework\TestCase;
 use Sylius\Component\Core\Model\AddressInterface;
 use Sylius\Component\Core\Model\CustomerInterface;
 use Sylius\Component\Core\Model\OrderInterface;
+use Sylius\Component\Core\Model\OrderItemInterface;
 use Sylius\Component\Core\Model\PaymentInterface;
+use Sylius\Component\Core\Model\ProductVariantInterface;
 
 final class PaymentOrderBuilderTest extends TestCase
 {
@@ -69,6 +75,40 @@ final class PaymentOrderBuilderTest extends TestCase
         $paymentOrder = (new PaymentOrderBuilder())->build($payment, ['shop_id' => 'sh_123'], null, null);
 
         self::assertSame('ORDER-123-payment-7-retry-2', $paymentOrder->getReference());
+    }
+
+    public function testItAddsMealVoucherEligibleAmountsWhenOrderContainsCompatibleProducts(): void
+    {
+        $variant = $this->createMockForIntersectionOfInterfaces([
+            ProductVariantInterface::class,
+            MealVoucherAwareInterface::class,
+        ]);
+        $variant->method('isMealVoucherCompatible')->willReturn(true);
+
+        $item = $this->createMock(OrderItemInterface::class);
+        $item->method('getVariant')->willReturn($variant);
+        $item->method('getTotal')->willReturn(3200);
+
+        $order = $this->createMock(OrderInterface::class);
+        $order->method('getNumber')->willReturn('ORDER-123');
+        $order->method('getItems')->willReturn(new ArrayCollection([$item]));
+
+        $payment = $this->createMock(PaymentInterface::class);
+        $payment->method('getId')->willReturn(7);
+        $payment->method('getAmount')->willReturn(4500);
+        $payment->method('getCurrencyCode')->willReturn('EUR');
+        $payment->method('getOrder')->willReturn($order);
+        $payment->method('getDetails')->willReturn([]);
+
+        $paymentOrder = (new PaymentOrderBuilder(new MealVoucherEligibilityCalculator()))
+            ->build($payment, ['shop_id' => 'sh_123'], null, null)
+        ;
+
+        self::assertSame([
+            PlatformEnum::SWILE => 3200,
+            PlatformEnum::RESTOFLASH => 3200,
+            PlatformEnum::CONECS => 3200,
+        ], $paymentOrder->getEligibleAmounts());
     }
 
     private function createAddress(string $firstName, string $lastName): AddressInterface

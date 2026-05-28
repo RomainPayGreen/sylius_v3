@@ -54,3 +54,22 @@ Then add a Sylius payment method using the `PayGreen` gateway and configure:
 - Public key
 - Secret key
 - Environment
+
+## Meal vouchers
+
+To flag food products as eligible for meal vouchers, make your Sylius product variant entity implement the plugin interface and use the provided trait:
+
+```php
+use PayGreen\SyliusPayumPlugin\Entity\MealVoucherAwareInterface;
+use PayGreen\SyliusPayumPlugin\Entity\MealVoucherAwareTrait;
+use Sylius\Component\Core\Model\ProductVariant as BaseProductVariant;
+
+class ProductVariant extends BaseProductVariant implements MealVoucherAwareInterface
+{
+    use MealVoucherAwareTrait;
+}
+```
+
+Then generate and run the Doctrine migration for the `meal_voucher_compatible` boolean column.
+
+When at least one order item uses an eligible variant, the plugin sends PayGreen V3 `eligible_amounts` for the meal voucher platforms supported by the SDK (`swile`, `restoflash`, `conecs`). API calls still go only through `paygreen/paygreen-php`.

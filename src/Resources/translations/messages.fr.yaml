@@ -6,3 +6,5 @@ paygreen:
         environment: Environnement
         environment_sandbox: Sandbox
         environment_production: Production
+    product_variant:
+        meal_voucher_compatible: Eligible aux titres-restaurant
