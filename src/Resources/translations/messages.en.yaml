@@ -1,0 +1,8 @@
+paygreen:
+    gateway_configuration:
+        shop_id: Shop ID
+        public_key: Public key
+        secret_key: Secret key
+        environment: Environment
+        environment_sandbox: Sandbox
+        environment_production: Production
