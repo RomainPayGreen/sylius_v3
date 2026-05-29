@@ -10,6 +10,7 @@ services:
         alias: PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculator
 
     PayGreen\SyliusPayumPlugin\Payum\Factory\PayGreenGatewayFactory:
+        public: true
         tags:
             - { name: payum.gateway_factory, factory: paygreen }
 
