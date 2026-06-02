@@ -14,6 +14,12 @@ final class PayGreenSyliusPayumPluginExtension extends Extension implements Prep
 {
     public function prepend(ContainerBuilder $container): void
     {
+        if ($container->hasExtension('monolog')) {
+            $container->prependExtensionConfig('monolog', [
+                'channels' => ['paygreen'],
+            ]);
+        }
+
         if (!$container->hasExtension('sylius_twig_hooks')) {
             return;
         }

@@ -1,3 +1,6 @@
+parameters:
+    paygreen.webhook.verify_status_via_api: false
+
 services:
     _defaults:
         autowire: true
@@ -23,6 +26,8 @@ services:
 
     PayGreen\SyliusPayumPlugin\Action\CaptureAction:
         public: true
+        arguments:
+            $logger: '@monolog.logger.paygreen'
         tags:
             - { name: payum.action, factory: paygreen, alias: payum.action.capture }
 
@@ -53,4 +58,7 @@ services:
         arguments:
             $paymentRepository: '@sylius.repository.payment'
             $entityManager: '@doctrine.orm.entity_manager'
+            $lockFactory: '@lock.factory'
+            $logger: '@monolog.logger.paygreen'
+            $verifyStatusViaApi: '%paygreen.webhook.verify_status_via_api%'
             $webhookSecretConfigKey: 'webhook_secret'
