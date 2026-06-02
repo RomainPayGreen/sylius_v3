@@ -20,15 +20,33 @@ final class PayGreenSyliusPayumPluginExtension extends Extension implements Prep
 
         $container->prependExtensionConfig('sylius_twig_hooks', [
             'hooks' => [
+                'gateway_configuration' => [
+                    'use_payum' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/payment_method/form/sections/gateway_configuration/use_payum.html.twig',
+                        'priority' => 0,
+                    ],
+                ],
                 'gateway_configuration.paygreen' => [
                     'config' => [
                         'template' => '@PayGreenSyliusPayumPlugin/admin/payment_method/form/sections/gateway_configuration/config.html.twig',
                         'priority' => 0,
                     ],
                 ],
+                'sylius_admin.payment_method.create.content.form.sections.gateway_configuration' => [
+                    'use_payum' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/payment_method/form/sections/gateway_configuration/use_payum.html.twig',
+                        'priority' => 0,
+                    ],
+                ],
                 'sylius_admin.payment_method.create.content.form.sections.gateway_configuration.paygreen' => [
                     'config' => [
                         'template' => '@PayGreenSyliusPayumPlugin/admin/payment_method/form/sections/gateway_configuration/config.html.twig',
+                        'priority' => 0,
+                    ],
+                ],
+                'sylius_admin.payment_method.update.content.form.sections.gateway_configuration' => [
+                    'use_payum' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/payment_method/form/sections/gateway_configuration/use_payum.html.twig',
                         'priority' => 0,
                     ],
                 ],
