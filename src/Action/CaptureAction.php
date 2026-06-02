@@ -16,8 +16,11 @@ use Payum\Core\GatewayAwareTrait;
 use Payum\Core\Reply\HttpRedirect;
 use Payum\Core\Request\Capture;
 use Payum\Core\Request\GetHttpRequest;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use RuntimeException;
 use Sylius\Component\Core\Model\PaymentInterface;
+use Throwable;
 
 final class CaptureAction implements ActionInterface, ApiAwareInterface, GatewayAwareInterface
 {
@@ -32,6 +35,7 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface, Gateway
         private readonly ClientFactory $clientFactory,
         private readonly PaymentOrderBuilder $paymentOrderBuilder,
         private readonly ResponseExtractor $responseExtractor,
+        private readonly LoggerInterface $logger = new NullLogger(),
     ) {
     }
 
@@ -54,46 +58,71 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface, Gateway
         /** @var PaymentInterface $payment */
         $payment = $request->getModel();
         $details = $payment->getDetails() ?? [];
-        $client = $this->clientFactory->create($this->api);
+        try {
+            $client = $this->clientFactory->create($this->api);
 
-        if (isset($details['paygreen_payment_order_id'])) {
-            if ($this->isCancelReturn()) {
-                $response = $client->cancelPaymentOrder((string) $details['paygreen_payment_order_id']);
-                $this->resetPaymentForRetry($payment, $details, $response);
+            if (isset($details['paygreen_payment_order_id'])) {
+                if ($this->isCancelReturn()) {
+                    $response = $client->cancelPaymentOrder((string) $details['paygreen_payment_order_id']);
+                    $this->resetPaymentForRetry($payment, $details, $response);
+
+                    return;
+                }
+
+                $response = $client->getPaymentOrder((string) $details['paygreen_payment_order_id']);
+                $payment->setDetails(array_filter(array_replace(
+                    $details,
+                    $this->responseExtractor->extractPaymentOrderDetails($response),
+                ), static fn (mixed $value): bool => null !== $value));
 
                 return;
             }
 
-            $response = $client->getPaymentOrder((string) $details['paygreen_payment_order_id']);
-            $payment->setDetails(array_filter(array_replace(
-                $details,
-                $this->responseExtractor->extractPaymentOrderDetails($response),
-            ), static fn (mixed $value): bool => null !== $value));
+            $paymentOrder = $this->paymentOrderBuilder->build(
+                $payment,
+                $this->api,
+                $this->resolveTokenUrl($request, 'getTargetUrl'),
+                $this->buildCancelUrl($this->resolveTokenUrl($request, 'getTargetUrl')),
+            );
 
-            return;
+            $response = $client->createPaymentOrder($paymentOrder);
+            $extractedDetails = $this->responseExtractor->extractPaymentOrderDetails($response);
+            $payment->setDetails(array_filter(array_replace($details, $extractedDetails), static fn (mixed $value): bool => null !== $value));
+
+            $paymentOrderId = $extractedDetails['paygreen_payment_order_id'] ?? null;
+            $this->logger->info('PayGreen payment order created.', [
+                'payment_id' => $payment->getId(),
+                'paygreen_payment_order_id' => is_string($paymentOrderId) ? $paymentOrderId : null,
+            ]);
+
+            $hostedPaymentUrl = $extractedDetails['paygreen_hosted_payment_url'] ?? null;
+            if (!is_string($hostedPaymentUrl) || '' === $hostedPaymentUrl) {
+                $payment->setState(PaymentInterface::STATE_NEW);
+
+                $message = $this->buildMissingHostedPaymentUrlMessage($extractedDetails);
+                $this->logger->warning('PayGreen hosted payment URL missing in response.', [
+                    'payment_id' => $payment->getId(),
+                    'paygreen_payment_order_id' => is_string($paymentOrderId) ? $paymentOrderId : null,
+                    'detail' => $this->extractPayGreenResponseDetail($extractedDetails),
+                ]);
+
+                throw new RuntimeException($message);
+            }
+
+            $payment->setState(PaymentInterface::STATE_PROCESSING);
+
+            throw new HttpRedirect($hostedPaymentUrl);
+        } catch (HttpRedirect $reply) {
+            throw $reply;
+        } catch (Throwable $exception) {
+            $this->logger->error('PayGreen capture failed.', [
+                'payment_id' => $payment->getId(),
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
         }
-
-        $paymentOrder = $this->paymentOrderBuilder->build(
-            $payment,
-            $this->api,
-            $this->resolveTokenUrl($request, 'getTargetUrl'),
-            $this->buildCancelUrl($this->resolveTokenUrl($request, 'getTargetUrl')),
-        );
-
-        $response = $client->createPaymentOrder($paymentOrder);
-        $extractedDetails = $this->responseExtractor->extractPaymentOrderDetails($response);
-        $payment->setDetails(array_filter(array_replace($details, $extractedDetails), static fn (mixed $value): bool => null !== $value));
-
-        $hostedPaymentUrl = $extractedDetails['paygreen_hosted_payment_url'] ?? null;
-        if (!is_string($hostedPaymentUrl) || '' === $hostedPaymentUrl) {
-            $payment->setState(PaymentInterface::STATE_NEW);
-
-            throw new RuntimeException($this->buildMissingHostedPaymentUrlMessage($extractedDetails));
-        }
-
-        $payment->setState(PaymentInterface::STATE_PROCESSING);
-
-        throw new HttpRedirect($hostedPaymentUrl);
     }
 
     public function supports($request)
@@ -161,12 +190,22 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface, Gateway
      */
     private function buildMissingHostedPaymentUrlMessage(array $details): string
     {
-        $response = $details['paygreen_response'] ?? [];
-        $detail = is_array($response) ? ($response['detail'] ?? $response['message'] ?? null) : null;
+        $detail = $this->extractPayGreenResponseDetail($details);
 
         return is_string($detail) && '' !== $detail
             ? sprintf('The PayGreen SDK response did not contain a hosted_payment_url: %s', $detail)
             : 'The PayGreen SDK response did not contain a hosted_payment_url.'
         ;
+    }
+
+    /**
+     * @param array<string, mixed> $details
+     */
+    private function extractPayGreenResponseDetail(array $details): ?string
+    {
+        $response = $details['paygreen_response'] ?? [];
+        $detail = is_array($response) ? ($response['detail'] ?? $response['message'] ?? null) : null;
+
+        return is_string($detail) && '' !== $detail ? $detail : null;
     }
 }
