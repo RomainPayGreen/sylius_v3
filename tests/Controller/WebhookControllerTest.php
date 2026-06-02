@@ -11,13 +11,13 @@ use Payum\Core\GatewayInterface;
 use Payum\Core\Payum;
 use Payum\Core\Request\Notify;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Sylius\Component\Core\Model\PaymentInterface;
 use Sylius\Component\Core\Repository\PaymentRepositoryInterface;
 use Sylius\Component\Payment\Model\GatewayConfigInterface;
 use Sylius\Component\Payment\Model\PaymentMethodInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use RuntimeException;
 
 final class WebhookControllerTest extends TestCase
 {
@@ -46,6 +46,35 @@ final class WebhookControllerTest extends TestCase
         );
 
         self::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+    }
+
+    public function testItReturnsGenericAcceptedResponseWhenPaymentCannotBeResolved(): void
+    {
+        $content = json_encode([
+            'id' => 'po_123',
+            'reference' => 'ORDER-123-payment-999999',
+            'status' => 'captured',
+        ], JSON_THROW_ON_ERROR);
+
+        $paymentRepository = $this->createMock(PaymentRepositoryInterface::class);
+        $paymentRepository->method('find')->with('999999')->willReturn(null);
+
+        $payum = $this->createMock(Payum::class);
+        $payum->expects(self::never())->method('getGateway');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('flush');
+
+        $response = (new WebhookController($payum, $paymentRepository, $entityManager, new PayGreenStatusMapper()))(
+            new Request([], [], [], [], [], [], $content),
+        );
+        $responsePayload = json_decode((string) $response->getContent(), true);
+
+        self::assertSame(Response::HTTP_ACCEPTED, $response->getStatusCode());
+        self::assertSame(['accepted' => true], $responsePayload);
+        self::assertArrayNotHasKey('payment_id', $responsePayload);
+        self::assertArrayNotHasKey('mapped_status', $responsePayload);
+        self::assertArrayNotHasKey('payment_state', $responsePayload);
     }
 
     public function testItProcessesWebhookWhenSignatureIsValid(): void
