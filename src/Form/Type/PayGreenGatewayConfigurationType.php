@@ -24,7 +24,6 @@ final class PayGreenGatewayConfigurationType extends AbstractType
             ])
             ->add('public_key', TextType::class, [
                 'label' => 'paygreen.gateway_configuration.public_key',
-                'constraints' => [new NotBlank(['groups' => ['sylius']])],
             ])
             ->add('secret_key', PasswordType::class, [
                 'label' => 'paygreen.gateway_configuration.secret_key',
