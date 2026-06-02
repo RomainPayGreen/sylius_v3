@@ -52,3 +52,5 @@ services:
         public: true
         arguments:
             $paymentRepository: '@sylius.repository.payment'
+            $entityManager: '@doctrine.orm.entity_manager'
+            $webhookSecretConfigKey: 'webhook_secret'

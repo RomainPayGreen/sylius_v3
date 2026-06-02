@@ -8,6 +8,7 @@ use Paygreen\Sdk\Payment\V3\Enum\PlatformEnum;
 use Paygreen\Sdk\Payment\V3\Model\Address;
 use Paygreen\Sdk\Payment\V3\Model\Buyer;
 use Paygreen\Sdk\Payment\V3\Model\PaymentOrder;
+use RuntimeException;
 use Sylius\Component\Core\Model\AddressInterface;
 use Sylius\Component\Core\Model\OrderInterface;
 use Sylius\Component\Core\Model\PaymentInterface;
@@ -93,11 +94,16 @@ final class PaymentOrderBuilder
     private function resolveReference(PaymentInterface $payment, ?OrderInterface $order): string
     {
         $orderReference = (string) ($order?->getNumber() ?? $order?->getId() ?? 'order');
+        $paymentId = $payment->getId();
+        if (!is_int($paymentId) && !(is_string($paymentId) && ctype_digit($paymentId))) {
+            throw new RuntimeException('PayGreen payment order reference requires a persisted Sylius payment id.');
+        }
+
         $details = $payment->getDetails() ?? [];
         $retryCount = (int) ($details['paygreen_retry_count'] ?? 0);
         $retrySuffix = $retryCount > 0 ? sprintf('-retry-%d', $retryCount) : '';
 
-        return sprintf('%s-payment-%s%s', $orderReference, (string) ($payment->getId() ?? uniqid('', true)), $retrySuffix);
+        return sprintf('%s-payment-%s%s', $orderReference, (string) $paymentId, $retrySuffix);
     }
 
     private function resolveDescription(?OrderInterface $order): string

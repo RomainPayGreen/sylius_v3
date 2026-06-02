@@ -21,6 +21,7 @@ class PayGreenGatewayFactory extends GatewayFactory
                 'shop_id' => $config['shop_id'],
                 'public_key' => $config['public_key'],
                 'secret_key' => $config['secret_key'],
+                'webhook_secret' => $config['webhook_secret'],
                 'environment' => $config['environment_mode'],
             ],
             'environment_mode' => Environment::ENVIRONMENT_PRODUCTION,
@@ -31,8 +32,9 @@ class PayGreenGatewayFactory extends GatewayFactory
             'shop_id' => '',
             'public_key' => '',
             'secret_key' => '',
+            'webhook_secret' => '',
         ];
 
-        $config['payum.required_options'] = ['shop_id', 'public_key', 'secret_key'];
+        $config['payum.required_options'] = ['shop_id', 'public_key', 'secret_key', 'webhook_secret'];
     }
 }

@@ -10,6 +10,7 @@ use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculator;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\PaymentOrderBuilder;
 use PayGreen\SyliusPayumPlugin\Entity\MealVoucherAwareInterface;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Sylius\Component\Core\Model\AddressInterface;
 use Sylius\Component\Core\Model\CustomerInterface;
 use Sylius\Component\Core\Model\OrderInterface;
@@ -75,6 +76,21 @@ final class PaymentOrderBuilderTest extends TestCase
         $paymentOrder = (new PaymentOrderBuilder())->build($payment, ['shop_id' => 'sh_123'], null, null);
 
         self::assertSame('ORDER-123-payment-7-retry-2', $paymentOrder->getReference());
+    }
+
+    public function testItRejectsPaymentOrderReferenceWithoutPersistedPaymentId(): void
+    {
+        $order = $this->createMock(OrderInterface::class);
+        $order->method('getNumber')->willReturn('ORDER-123');
+
+        $payment = $this->createMock(PaymentInterface::class);
+        $payment->method('getId')->willReturn(null);
+        $payment->method('getOrder')->willReturn($order);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('PayGreen payment order reference requires a persisted Sylius payment id.');
+
+        (new PaymentOrderBuilder())->build($payment, ['shop_id' => 'sh_123'], null, null);
     }
 
     public function testItAddsMealVoucherEligibleAmountsWhenOrderContainsCompatibleProducts(): void

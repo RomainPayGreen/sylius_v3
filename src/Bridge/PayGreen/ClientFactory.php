@@ -13,35 +13,52 @@ use RuntimeException;
 
 final class ClientFactory
 {
+    /**
+     * @var array<string, string>
+     */
+    private array $bearerTokens = [];
+
     public function __construct(private readonly ?HttpClient $httpClient = null)
     {
     }
 
     /**
-     * @param array{shop_id?: string, public_key?: string, secret_key?: string, environment?: string} $config
+     * @param array{shop_id?: string, public_key?: string, secret_key?: string, webhook_secret?: string, environment?: string} $config
      */
     public function create(array $config): Client
     {
+        $shopId = (string) ($config['shop_id'] ?? '');
+        $environment = (string) ($config['environment'] ?? Environment::ENVIRONMENT_PRODUCTION);
+
         $client = new Client(
             $this->httpClient ?? HttpClientDiscovery::find(),
             new Environment(
-                (string) ($config['shop_id'] ?? ''),
+                $shopId,
                 (string) ($config['secret_key'] ?? ''),
-                (string) ($config['environment'] ?? Environment::ENVIRONMENT_PRODUCTION),
+                $environment,
             ),
         );
 
-        $this->authenticate($client);
+        $cacheKey = $this->buildBearerTokenCacheKey($shopId, $environment);
+        if (isset($this->bearerTokens[$cacheKey])) {
+            $client->setBearer($this->bearerTokens[$cacheKey]);
+
+            return $client;
+        }
+
+        $this->authenticate($client, $cacheKey);
 
         return $client;
     }
 
-    private function authenticate(Client $client): void
+    private function authenticate(Client $client, string $cacheKey): void
     {
         $payload = $this->normalizeResponse($client->authenticate());
         $token = $payload['data']['token'] ?? null;
 
         if (!is_string($token) || '' === $token) {
+            unset($this->bearerTokens[$cacheKey]);
+
             $message = $payload['message'] ?? null;
 
             throw new RuntimeException(sprintf(
@@ -50,7 +67,13 @@ final class ClientFactory
             ));
         }
 
+        $this->bearerTokens[$cacheKey] = $token;
         $client->setBearer($token);
+    }
+
+    private function buildBearerTokenCacheKey(string $shopId, string $environment): string
+    {
+        return sprintf('%s|%s', $shopId, $environment);
     }
 
     /**

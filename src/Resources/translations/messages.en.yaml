@@ -3,6 +3,7 @@ paygreen:
         shop_id: Shop ID
         public_key: Public key
         secret_key: Secret key
+        webhook_secret: Webhook secret
         environment: Environment
         environment_sandbox: Sandbox
         environment_production: Production

@@ -30,6 +30,10 @@ final class PayGreenGatewayConfigurationType extends AbstractType
                 'label' => 'paygreen.gateway_configuration.secret_key',
                 'constraints' => [new NotBlank(['groups' => ['sylius']])],
             ])
+            ->add('webhook_secret', PasswordType::class, [
+                'label' => 'paygreen.gateway_configuration.webhook_secret',
+                'constraints' => [new NotBlank(['groups' => ['sylius']])],
+            ])
             ->add('environment_mode', ChoiceType::class, [
                 'label' => 'paygreen.gateway_configuration.environment',
                 'choices' => [

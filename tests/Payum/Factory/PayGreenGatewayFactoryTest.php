@@ -17,9 +17,10 @@ final class PayGreenGatewayFactoryTest extends TestCase
 
         self::assertSame(PayGreenGatewayFactory::FACTORY_NAME, $config['payum.factory_name']);
         self::assertSame('PayGreen', $config['payum.factory_title']);
-        self::assertSame(['shop_id', 'public_key', 'secret_key'], $config['payum.required_options']);
+        self::assertSame(['shop_id', 'public_key', 'secret_key', 'webhook_secret'], $config['payum.required_options']);
         self::assertSame('PRODUCTION', $config['payum.default_options']['environment_mode']);
         self::assertSame('', $config['payum.default_options']['public_key']);
+        self::assertSame('', $config['payum.default_options']['webhook_secret']);
     }
 }
 
