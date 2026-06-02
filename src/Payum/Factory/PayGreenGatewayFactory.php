@@ -35,6 +35,6 @@ class PayGreenGatewayFactory extends GatewayFactory
             'webhook_secret' => '',
         ];
 
-        $config['payum.required_options'] = ['shop_id', 'secret_key', 'webhook_secret'];
+        $config['payum.required_options'] = ['shop_id', 'secret_key'];
     }
 }

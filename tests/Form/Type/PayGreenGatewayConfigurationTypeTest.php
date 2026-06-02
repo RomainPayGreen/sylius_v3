@@ -21,7 +21,6 @@ final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
     public static function secretFieldProvider(): iterable
     {
         yield 'secret key' => ['secret_key'];
-        yield 'webhook secret' => ['webhook_secret'];
     }
 
     #[DataProvider('secretFieldProvider')]
@@ -31,7 +30,6 @@ final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
             'shop_id' => 'sh_123',
             'public_key' => 'pk_123',
             'secret_key' => 'sk_123',
-            'webhook_secret' => 'whsec_123',
             'environment_mode' => 'SANDBOX',
         ]);
 

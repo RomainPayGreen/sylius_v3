@@ -69,3 +69,10 @@ services:
             $logger: '@monolog.logger.paygreen'
             $verifyStatusViaApi: '%paygreen.webhook.verify_status_via_api%'
             $webhookSecretConfigKey: 'webhook_secret'
+
+    PayGreen\SyliusPayumPlugin\EventListener\GatewayConfigSaveListener:
+        arguments:
+            $logger: '@monolog.logger.paygreen'
+        tags:
+            - { name: kernel.event_listener, event: sylius.payment_method.post_create, method: onGatewayConfigSave }
+            - { name: kernel.event_listener, event: sylius.payment_method.post_update, method: onGatewayConfigSave }
