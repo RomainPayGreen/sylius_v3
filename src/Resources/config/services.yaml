@@ -54,3 +54,10 @@ services:
             $paymentRepository: '@sylius.repository.payment'
             $entityManager: '@doctrine.orm.entity_manager'
             $webhookSecretConfigKey: 'webhook_secret'
+
+    PayGreen\SyliusPayumPlugin\EventListener\GatewayConfigSaveListener:
+        arguments:
+            $logger: '@monolog.logger.paygreen'
+        tags:
+            - { name: kernel.event_listener, event: sylius.payment_method.post_create, method: onGatewayConfigSave }
+            - { name: kernel.event_listener, event: sylius.payment_method.post_update, method: onGatewayConfigSave }
