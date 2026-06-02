@@ -32,7 +32,7 @@ final class GatewayConfigSaveListener
         }
 
         $gatewayConfig = $paymentMethod->getGatewayConfig();
-        if (null === $gatewayConfig || PayGreenGatewayFactory::FACTORY_NAME !== $gatewayConfig->getGatewayName()) {
+        if (null === $gatewayConfig || !$this->isPayGreenGateway($gatewayConfig)) {
             return;
         }
 
@@ -74,6 +74,12 @@ final class GatewayConfigSaveListener
         }
 
         return null;
+    }
+
+    private function isPayGreenGateway(object $gatewayConfig): bool
+    {
+        return method_exists($gatewayConfig, 'getFactoryName')
+            && PayGreenGatewayFactory::FACTORY_NAME === $gatewayConfig->getFactoryName();
     }
 
     /**

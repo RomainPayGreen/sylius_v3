@@ -33,6 +33,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
 
         $gatewayConfig = $this->createMock(GatewayConfigInterface::class);
         $gatewayConfig->method('getGatewayName')->willReturn('offline');
+        $gatewayConfig->method('getFactoryName')->willReturn('offline');
 
         $paymentMethod = $this->createMock(PaymentMethodInterface::class);
         $paymentMethod->method('getGatewayConfig')->willReturn($gatewayConfig);
@@ -62,7 +63,8 @@ final class GatewayConfigSaveListenerTest extends TestCase
         $entityManager->expects(self::once())->method('flush');
 
         $gatewayConfig = $this->createMock(GatewayConfigInterface::class);
-        $gatewayConfig->method('getGatewayName')->willReturn(PayGreenGatewayFactory::FACTORY_NAME);
+        $gatewayConfig->method('getGatewayName')->willReturn('paygreen2');
+        $gatewayConfig->method('getFactoryName')->willReturn(PayGreenGatewayFactory::FACTORY_NAME);
         $gatewayConfig->method('getConfig')->willReturn([
             'shop_id' => 'sh_123',
             'secret_key' => 'sk_123',
