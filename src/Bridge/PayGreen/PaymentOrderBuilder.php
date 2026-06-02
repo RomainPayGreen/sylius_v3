@@ -58,8 +58,8 @@ final class PaymentOrderBuilder
             $this->addMealVoucherEligibleAmounts($paymentOrder, $order);
         }
 
-        $this->callOptionalSetter($paymentOrder, 'setReturnUrl', $returnUrl);
-        $this->callOptionalSetter($paymentOrder, 'setCancelUrl', $cancelUrl);
+        $this->callRequiredSetter($paymentOrder, 'setReturnUrl', $returnUrl);
+        $this->callRequiredSetter($paymentOrder, 'setCancelUrl', $cancelUrl);
 
         return $paymentOrder;
     }
@@ -133,6 +133,23 @@ final class PaymentOrderBuilder
     {
         if (null === $value || '' === $value || !method_exists($object, $method)) {
             return;
+        }
+
+        $object->{$method}($value);
+    }
+
+    private function callRequiredSetter(object $object, string $method, mixed $value): void
+    {
+        if (null === $value || '' === $value) {
+            return;
+        }
+
+        if (!method_exists($object, $method)) {
+            throw new RuntimeException(sprintf(
+                'The installed PayGreen PHP SDK does not expose %s::%s(), which is required to configure hosted payment return URLs. Please install paygreen/paygreen-php 1.4.0 or newer.',
+                $object::class,
+                $method,
+            ));
         }
 
         $object->{$method}($value);
