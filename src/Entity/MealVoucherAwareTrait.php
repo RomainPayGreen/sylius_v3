@@ -8,8 +8,8 @@ use Doctrine\ORM\Mapping as ORM;
 
 trait MealVoucherAwareTrait
 {
-    #[ORM\Column(name: 'meal_voucher_compatible', type: 'boolean', options: ['default' => true])]
-    protected bool $mealVoucherCompatible = true;
+    #[ORM\Column(name: 'meal_voucher_compatible', type: 'boolean', options: ['default' => false])]
+    protected bool $mealVoucherCompatible = false;
 
     public function isMealVoucherCompatible(): bool
     {
