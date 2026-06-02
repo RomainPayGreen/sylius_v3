@@ -45,6 +45,10 @@ final class ListenerRegistrar
                 }
             }
 
+            if (!$this->shouldReplaceListener($listener, $webhookUrl)) {
+                continue;
+            }
+
             $listenerId = $this->findString($listener, ['id', 'listener_id', 'listenerId']);
             if (null !== $listenerId) {
                 $client->deleteListener($listenerId);
@@ -117,6 +121,19 @@ final class ListenerRegistrar
         $url = $this->findString($listener, ['url']);
 
         return $url === $webhookUrl && $this->eventsMatch($this->findArray($listener, ['events']));
+    }
+
+    /**
+     * @param array<string, mixed> $listener
+     */
+    private function shouldReplaceListener(array $listener, string $webhookUrl): bool
+    {
+        $listenerUrl = $this->findString($listener, ['url']);
+        if (null === $listenerUrl || !str_contains(strtolower($listenerUrl), 'paygreen')) {
+            return false;
+        }
+
+        return parse_url($listenerUrl, PHP_URL_HOST) === parse_url($webhookUrl, PHP_URL_HOST);
     }
 
     /**

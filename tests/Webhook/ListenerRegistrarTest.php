@@ -72,7 +72,7 @@ final class ListenerRegistrarTest extends TestCase
                 'data' => [[
                     'id' => 'listener_wrong',
                     'type' => 'webhook',
-                    'url' => 'https://example.test/old-webhook',
+                    'url' => 'https://example.test/old-paygreen-webhook',
                     'events' => ListenerRegistrarEvents::all(),
                     'hmac_key' => 'hmac_old',
                 ]],
@@ -95,6 +95,37 @@ final class ListenerRegistrarTest extends TestCase
         self::assertSame('DELETE', $httpClient->requests[1]->getMethod());
         self::assertSame('/notifications/listeners/listener_wrong', $httpClient->requests[1]->getUri()->getPath());
         self::assertSame('POST', $httpClient->requests[2]->getMethod());
+    }
+
+    public function testItDoesNotDeleteWebhookListenerFromDifferentHost(): void
+    {
+        $httpClient = new ListenerRegistrarHttpClient([
+            new Response(200, [], $this->json([
+                'data' => [[
+                    'id' => 'listener_other_host',
+                    'type' => 'webhook',
+                    'url' => 'https://other-shop.test/paygreen/webhook',
+                    'events' => ListenerRegistrarEvents::all(),
+                    'hmac_key' => 'hmac_other',
+                ]],
+            ])),
+            new Response(200, [], $this->json(['data' => [
+                'id' => 'listener_created',
+                'hmac_key' => 'hmac_created',
+            ]])),
+        ]);
+
+        $hmacKey = $this->registrar()->register(
+            $this->client($httpClient),
+            'sh_123',
+            'https://example.test/paygreen/webhook',
+        );
+
+        self::assertSame('hmac_created', $hmacKey);
+        self::assertCount(2, $httpClient->requests);
+        self::assertSame('GET', $httpClient->requests[0]->getMethod());
+        self::assertSame('POST', $httpClient->requests[1]->getMethod());
+        self::assertSame('/notifications/listeners', $httpClient->requests[1]->getUri()->getPath());
     }
 
     private function registrar(): ListenerRegistrar
