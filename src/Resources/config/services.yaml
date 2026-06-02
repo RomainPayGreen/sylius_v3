@@ -12,6 +12,13 @@ services:
     PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculatorInterface:
         alias: PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculator
 
+    PayGreen\SyliusPayumPlugin\Lock\LockFactoryInterface:
+        alias: PayGreen\SyliusPayumPlugin\Lock\SymfonyLockFactoryAdapter
+
+    PayGreen\SyliusPayumPlugin\Lock\SymfonyLockFactoryAdapter:
+        arguments:
+            $inner: '@lock.factory'
+
     PayGreen\SyliusPayumPlugin\Payum\Factory\PayGreenGatewayFactory:
         public: true
         tags:
@@ -58,7 +65,7 @@ services:
         arguments:
             $paymentRepository: '@sylius.repository.payment'
             $entityManager: '@doctrine.orm.entity_manager'
-            $lockFactory: '@lock.factory'
+            $lockFactory: '@PayGreen\SyliusPayumPlugin\Lock\LockFactoryInterface'
             $logger: '@monolog.logger.paygreen'
             $verifyStatusViaApi: '%paygreen.webhook.verify_status_via_api%'
             $webhookSecretConfigKey: 'webhook_secret'

@@ -10,6 +10,7 @@ use Http\Client\HttpClient;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
 use PayGreen\SyliusPayumPlugin\Controller\WebhookController;
+use PayGreen\SyliusPayumPlugin\Lock\LockFactoryInterface;
 use PayGreen\SyliusPayumPlugin\Status\PayGreenStatusMapper;
 use Payum\Core\GatewayInterface;
 use Payum\Core\Payum;
@@ -23,6 +24,7 @@ use Sylius\Component\Core\Model\PaymentInterface;
 use Sylius\Component\Core\Repository\PaymentRepositoryInterface;
 use Sylius\Component\Payment\Model\GatewayConfigInterface;
 use Sylius\Component\Payment\Model\PaymentMethodInterface;
+use PayGreen\SyliusPayumPlugin\Lock\LockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -297,7 +299,7 @@ final class WebhookControllerTest extends TestCase
     }
 }
 
-final class InMemoryLockFactory
+final class InMemoryLockFactory implements LockFactoryInterface
 {
     /**
      * @var list<InMemoryLock>
@@ -308,7 +310,7 @@ final class InMemoryLockFactory
     {
     }
 
-    public function createLock(string $key, float $ttl, bool $autoRelease): InMemoryLock
+    public function createLock(string $key, float $ttl, bool $autoRelease): LockInterface
     {
         $lock = new InMemoryLock($key, $ttl, $autoRelease, $this->acquired);
         $this->locks[] = $lock;
@@ -317,7 +319,7 @@ final class InMemoryLockFactory
     }
 }
 
-final class InMemoryLock
+final class InMemoryLock implements LockInterface
 {
     public int $acquireCalls = 0;
     public int $releaseCalls = 0;

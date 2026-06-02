@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
 use PayGreen\SyliusPayumPlugin\Status\PayGreenStatusMapper;
+use PayGreen\SyliusPayumPlugin\Lock\LockFactoryInterface;
 use Payum\Core\Payum;
 use Payum\Core\Request\Notify;
 use Psr\Log\LoggerInterface;
@@ -28,7 +29,7 @@ final class WebhookController
         private readonly PayGreenStatusMapper $statusMapper,
         private readonly ClientFactory $clientFactory,
         private readonly ResponseExtractor $responseExtractor,
-        private readonly object $lockFactory,
+        private readonly LockFactoryInterface $lockFactory,
         private readonly LoggerInterface $logger = new NullLogger(),
         private readonly bool $verifyStatusViaApi = false,
         private readonly string $webhookSecretConfigKey = 'webhook_secret',
