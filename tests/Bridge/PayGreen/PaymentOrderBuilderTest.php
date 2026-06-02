@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace PayGreen\SyliusPayumPlugin\Tests\Bridge\PayGreen;
 
+use Closure;
 use Doctrine\Common\Collections\ArrayCollection;
 use Paygreen\Sdk\Payment\V3\Enum\PlatformEnum;
+use Paygreen\Sdk\Payment\V3\Model\PaymentOrder;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculator;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\PaymentOrderBuilder;
 use PayGreen\SyliusPayumPlugin\Entity\MealVoucherAwareInterface;
@@ -59,6 +61,46 @@ final class PaymentOrderBuilderTest extends TestCase
         self::assertSame('https://example.com/cancel', $paymentOrder->getCancelUrl());
         self::assertSame('romain@example.com', $paymentOrder->getBuyer()->getEmail());
         self::assertSame('FR', $paymentOrder->getShippingAddress()->getCountryCode());
+    }
+
+    public function testItSetsHostedPaymentReturnAndCancelUrlsOnTheRealSdkPaymentOrder(): void
+    {
+        $order = $this->createMock(OrderInterface::class);
+        $order->method('getNumber')->willReturn('ORDER-123');
+
+        $payment = $this->createMock(PaymentInterface::class);
+        $payment->method('getId')->willReturn(7);
+        $payment->method('getAmount')->willReturn(4500);
+        $payment->method('getCurrencyCode')->willReturn('EUR');
+        $payment->method('getOrder')->willReturn($order);
+        $payment->method('getDetails')->willReturn([]);
+
+        $paymentOrder = (new PaymentOrderBuilder())->build(
+            $payment,
+            ['shop_id' => 'sh_123'],
+            'https://example.com/payment/return',
+            'https://example.com/payment/cancel',
+        );
+
+        self::assertInstanceOf(PaymentOrder::class, $paymentOrder);
+        self::assertSame('https://example.com/payment/return', $paymentOrder->getReturnUrl());
+        self::assertSame('https://example.com/payment/cancel', $paymentOrder->getCancelUrl());
+    }
+
+    public function testItFailsWhenARequiredSdkSetterDoesNotExist(): void
+    {
+        $callRequiredSetter = Closure::bind(
+            static function (PaymentOrderBuilder $builder, object $object, string $method, mixed $value): void {
+                $builder->callRequiredSetter($object, $method, $value);
+            },
+            null,
+            PaymentOrderBuilder::class,
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The installed PayGreen PHP SDK does not expose stdClass::setReturnUrl(), which is required to configure hosted payment return URLs. Please install paygreen/paygreen-php 1.4.0 or newer.');
+
+        $callRequiredSetter(new PaymentOrderBuilder(), new \stdClass(), 'setReturnUrl', 'https://example.com/payment/return');
     }
 
     public function testItMakesRetryReferencesUniqueAfterCancelledHostedPageReturn(): void
