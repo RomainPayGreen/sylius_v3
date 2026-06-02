@@ -39,12 +39,7 @@ final class WebhookController
         $payment = $this->findPayment($payload);
 
         if (!$payment instanceof PaymentInterface) {
-            return new JsonResponse([
-                'accepted' => false,
-                'error' => 'Payment could not be resolved from the PayGreen webhook payload.',
-                'paygreen_status' => $status,
-                'mapped_status' => $this->statusMapper->map(is_string($status) ? $status : null),
-            ], Response::HTTP_ACCEPTED);
+            return new JsonResponse(['accepted' => true], Response::HTTP_ACCEPTED);
         }
 
         if (!$this->isSignatureValid($request, $content, $payment)) {
