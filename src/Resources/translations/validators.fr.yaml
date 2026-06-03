@@ -1,0 +1,4 @@
+paygreen:
+    gateway_configuration:
+        credentials_invalid: L'authentification PayGreen a echoue. Verifiez l'ID boutique, la cle secrete et l'environnement.
+        secret_key_required: La cle secrete est obligatoire.

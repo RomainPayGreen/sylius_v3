@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace PayGreen\SyliusPayumPlugin\Tests\Form\Type;
 
+use GuzzleHttp\Psr7\Response;
+use Http\Client\HttpClient;
+use Paygreen\Sdk\Payment\V3\Environment;
+use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
 use PayGreen\SyliusPayumPlugin\Form\Type\PayGreenGatewayConfigurationType;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Symfony\Component\Form\Test\Traits\ValidatorExtensionTrait;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
+use Symfony\Component\Form\Test\Traits\ValidatorExtensionTrait;
 use Symfony\Component\Form\Test\TypeTestCase;
+use Symfony\Component\Validator\Constraints\Callback;
 use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
 
 final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
 {
@@ -57,5 +66,86 @@ final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
         $form = $this->factory->create(PayGreenGatewayConfigurationType::class);
 
         self::assertFalse($form->get('webhook_url')->getConfig()->getOption('required'));
+    }
+
+    public function testCredentialsValidationAcceptsValidCredentials(): void
+    {
+        $violations = $this->validateGatewayConfig([
+            'shop_id' => 'sh_123',
+            'secret_key' => 'sk_123',
+            'environment_mode' => Environment::ENVIRONMENT_SANDBOX,
+        ], [
+            new Response(200, [], $this->json(['data' => ['token' => 'jwt_123']])),
+        ]);
+
+        self::assertCount(0, $violations);
+    }
+
+    public function testCredentialsValidationRejectsInvalidCredentials(): void
+    {
+        $violations = $this->validateGatewayConfig([
+            'shop_id' => 'sh_123',
+            'secret_key' => 'sk_wrong',
+            'environment_mode' => Environment::ENVIRONMENT_PRODUCTION,
+        ], [
+            new Response(200, [], $this->json(['message' => 'Invalid API key.'])),
+        ]);
+
+        self::assertCount(1, $violations);
+        self::assertSame('paygreen.gateway_configuration.credentials_invalid', $violations[0]->getMessage());
+        self::assertSame('[secret_key]', $violations[0]->getPropertyPath());
+    }
+
+    public function testCredentialsValidationRejectsEmptySecretKey(): void
+    {
+        $violations = $this->validateGatewayConfig([
+            'shop_id' => 'sh_123',
+            'secret_key' => '',
+            'environment_mode' => Environment::ENVIRONMENT_SANDBOX,
+        ], []);
+
+        self::assertCount(1, $violations);
+        self::assertSame('paygreen.gateway_configuration.secret_key_required', $violations[0]->getMessage());
+        self::assertSame('[secret_key]', $violations[0]->getPropertyPath());
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     * @param list<ResponseInterface> $responses
+     */
+    private function validateGatewayConfig(array $config, array $responses): ConstraintViolationListInterface
+    {
+        $formType = new PayGreenGatewayConfigurationType(new ClientFactory(
+            new PayGreenGatewayConfigurationHttpClient($responses),
+        ));
+
+        return Validation::createValidator()->validate(
+            $config,
+            new Callback([$formType, 'validateCredentials'], groups: ['sylius']),
+            ['sylius'],
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function json(array $payload): string
+    {
+        return json_encode($payload, JSON_THROW_ON_ERROR);
+    }
+}
+
+final class PayGreenGatewayConfigurationHttpClient implements HttpClient
+{
+    /**
+     * @param list<ResponseInterface> $responses
+     */
+    public function __construct(private array $responses)
+    {
+    }
+
+    public function sendRequest(RequestInterface $request): ResponseInterface
+    {
+        return array_shift($this->responses) ?? new Response(200, [], '{}');
     }
 }
