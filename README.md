@@ -55,6 +55,24 @@ Then add a Sylius payment method using the `PayGreen` gateway and configure:
 - Secret key
 - Environment
 
+### Webhook listener URL
+
+When a PayGreen payment method is saved, the plugin automatically registers or verifies the PayGreen webhook listener through the PayGreen SDK. It first calls the PayGreen API to find an existing listener for the generated webhook URL, then creates one when needed and stores the returned HMAC key in the gateway config.
+
+By default, the listener URL is generated from the Symfony route `paygreen_payment_webhook`. In local or proxied environments, you can override the public base URL with:
+
+```dotenv
+DEFAULT_LISTENER_URI=https://your-public-domain.example
+```
+
+If `DEFAULT_LISTENER_URI` has no path, the plugin appends the webhook route path automatically. You may also provide the full listener URL:
+
+```dotenv
+DEFAULT_LISTENER_URI=https://your-public-domain.example/payment/paygreen/webhook
+```
+
+The value is meant for environment configuration only; it is not displayed in the Sylius admin. If the generated listener URL is local (`localhost`, `127.0.0.1`, or `::1`), listener registration is skipped because PayGreen cannot call local URLs.
+
 ## Meal vouchers
 
 To flag food products as eligible for meal vouchers, make your Sylius product variant entity implement the plugin interface and use the provided trait:

@@ -21,6 +21,7 @@ final class GatewayConfigSaveListener
         private readonly UrlGeneratorInterface $router,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
+        private readonly string $defaultListenerUri = '',
     ) {
     }
 
@@ -89,6 +90,20 @@ final class GatewayConfigSaveListener
 
     private function resolveWebhookUrl(): string
     {
+        $defaultListenerUri = trim($this->defaultListenerUri);
+        if ('' !== $defaultListenerUri) {
+            $path = parse_url($defaultListenerUri, PHP_URL_PATH);
+            if (null === $path || '' === $path || '/' === $path) {
+                return rtrim($defaultListenerUri, '/') . $this->router->generate(
+                    'paygreen_payment_webhook',
+                    [],
+                    UrlGeneratorInterface::ABSOLUTE_PATH,
+                );
+            }
+
+            return $defaultListenerUri;
+        }
+
         return $this->router->generate(
             'paygreen_payment_webhook',
             [],
