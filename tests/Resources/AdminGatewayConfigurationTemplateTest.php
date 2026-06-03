@@ -8,11 +8,11 @@ use PHPUnit\Framework\TestCase;
 
 final class AdminGatewayConfigurationTemplateTest extends TestCase
 {
-    public function testItRendersWebhookUrlField(): void
+    public function testItDoesNotRenderWebhookUrlField(): void
     {
         $template = file_get_contents(__DIR__ . '/../../src/Resources/views/admin/payment_method/form/sections/gateway_configuration/config.html.twig');
 
         self::assertIsString($template);
-        self::assertStringContainsString('form.gatewayConfig.config.webhook_url', $template);
+        self::assertStringNotContainsString('form.gatewayConfig.config.webhook_url', $template);
     }
 }

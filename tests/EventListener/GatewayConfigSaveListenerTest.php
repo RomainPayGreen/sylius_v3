@@ -85,7 +85,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
         self::assertSame('POST', $httpClient->requests[2]->getMethod());
     }
 
-    public function testItUsesConfiguredWebhookUrlWhenProvided(): void
+    public function testItIgnoresLegacyConfiguredWebhookUrlAndUsesGeneratedWebhookUrl(): void
     {
         $httpClient = new GatewayConfigSaveHttpClient([
             new Response(200, [], $this->json(['data' => ['token' => 'jwt_123']])),
@@ -97,7 +97,11 @@ final class GatewayConfigSaveListenerTest extends TestCase
         ]);
 
         $router = $this->createMock(UrlGeneratorInterface::class);
-        $router->expects(self::never())->method('generate');
+        $router->method('generate')->with(
+            'paygreen_payment_webhook',
+            [],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        )->willReturn('https://generated.example.test/payment/paygreen/webhook');
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush');
@@ -112,7 +116,8 @@ final class GatewayConfigSaveListenerTest extends TestCase
             'environment_mode' => Environment::ENVIRONMENT_SANDBOX,
         ]);
         $gatewayConfig->expects(self::once())->method('setConfig')->with(self::callback(
-            static fn (array $config): bool => ($config['webhook_secret'] ?? null) === 'hmac_created',
+            static fn (array $config): bool => ($config['webhook_secret'] ?? null) === 'hmac_created'
+                && !array_key_exists('webhook_url', $config),
         ));
 
         $paymentMethod = $this->createMock(PaymentMethodInterface::class);
@@ -122,7 +127,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
 
         $requestBody = json_decode((string) $httpClient->requests[2]->getBody(), true, 512, JSON_THROW_ON_ERROR);
 
-        self::assertSame('https://public.example.test/payment/paygreen/webhook', $requestBody['url'] ?? null);
+        self::assertSame('https://generated.example.test/payment/paygreen/webhook', $requestBody['url'] ?? null);
     }
 
     public function testItSkipsListenerRegistrationWhenGeneratedWebhookUrlIsLocal(): void

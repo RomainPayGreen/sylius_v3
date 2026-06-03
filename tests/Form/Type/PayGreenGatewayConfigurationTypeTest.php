@@ -61,11 +61,11 @@ final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
         }
     }
 
-    public function testWebhookUrlIsOptional(): void
+    public function testWebhookUrlIsNotDisplayedInAdminConfiguration(): void
     {
         $form = $this->factory->create(PayGreenGatewayConfigurationType::class);
 
-        self::assertFalse($form->get('webhook_url')->getConfig()->getOption('required'));
+        self::assertFalse($form->has('webhook_url'));
     }
 
     public function testCredentialsValidationAcceptsValidCredentials(): void

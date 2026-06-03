@@ -3,7 +3,6 @@ paygreen:
         shop_id: ID boutique
         public_key: Cle publique
         secret_key: Cle secrete
-        webhook_url: URL webhook
         environment: Environnement
         environment_sandbox: Sandbox
         environment_production: Production

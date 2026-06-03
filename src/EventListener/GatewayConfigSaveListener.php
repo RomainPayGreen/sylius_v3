@@ -45,7 +45,7 @@ final class GatewayConfigSaveListener
         }
 
         try {
-            $webhookUrl = $this->resolveWebhookUrl($config);
+            $webhookUrl = $this->resolveWebhookUrl();
             if ($this->isLocalWebhookUrl($webhookUrl)) {
                 $this->logger->warning('PayGreen listener registration skipped because webhook URL is local.', [
                     'webhook_url' => $webhookUrl,
@@ -56,6 +56,7 @@ final class GatewayConfigSaveListener
 
             $client = $this->clientFactory->create($this->normalizeClientConfig($config));
             $hmacKey = $this->listenerRegistrar->register($client, $shopId, $webhookUrl);
+            unset($config['webhook_url']);
 
             $gatewayConfig->setConfig(array_merge($config, ['webhook_secret' => $hmacKey]));
             $this->entityManager->flush();
@@ -86,16 +87,8 @@ final class GatewayConfigSaveListener
             && PayGreenGatewayFactory::FACTORY_NAME === $gatewayConfig->getFactoryName();
     }
 
-    /**
-     * @param array<string, mixed> $config
-     */
-    private function resolveWebhookUrl(array $config): string
+    private function resolveWebhookUrl(): string
     {
-        $configuredWebhookUrl = $config['webhook_url'] ?? null;
-        if (is_string($configuredWebhookUrl) && '' !== trim($configuredWebhookUrl)) {
-            return trim($configuredWebhookUrl);
-        }
-
         return $this->router->generate(
             'paygreen_payment_webhook',
             [],
