@@ -13,6 +13,7 @@ use PayGreen\SyliusPayumPlugin\Webhook\ListenerRegistrar;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use RuntimeException;
 
 final class ListenerRegistrarTest extends TestCase
 {
@@ -126,6 +127,25 @@ final class ListenerRegistrarTest extends TestCase
         self::assertSame('GET', $httpClient->requests[0]->getMethod());
         self::assertSame('POST', $httpClient->requests[1]->getMethod());
         self::assertSame('/notifications/listeners', $httpClient->requests[1]->getUri()->getPath());
+    }
+
+    public function testItIncludesPayGreenResponseDetailsWhenListenerCreationDoesNotReturnHmacKey(): void
+    {
+        $httpClient = new ListenerRegistrarHttpClient([
+            new Response(200, [], $this->json(['data' => []])),
+            new Response(400, [], $this->json([
+                'message' => 'url: Invalid value',
+            ])),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('status 400: url: Invalid value');
+
+        $this->registrar()->register(
+            $this->client($httpClient),
+            'sh_123',
+            'http://localhost/payment/paygreen/webhook',
+        );
     }
 
     private function registrar(): ListenerRegistrar

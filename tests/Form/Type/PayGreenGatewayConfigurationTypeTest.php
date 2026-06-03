@@ -51,4 +51,11 @@ final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
             self::assertNotInstanceOf(NotBlank::class, $constraint);
         }
     }
+
+    public function testWebhookUrlIsOptional(): void
+    {
+        $form = $this->factory->create(PayGreenGatewayConfigurationType::class);
+
+        self::assertFalse($form->get('webhook_url')->getConfig()->getOption('required'));
+    }
 }

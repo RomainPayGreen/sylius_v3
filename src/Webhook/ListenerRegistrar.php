@@ -7,6 +7,7 @@ namespace PayGreen\SyliusPayumPlugin\Webhook;
 use Paygreen\Sdk\Payment\V3\Client;
 use Paygreen\Sdk\Payment\V3\Model\Listener;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
+use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 
 final class ListenerRegistrar
@@ -66,11 +67,15 @@ final class ListenerRegistrar
             ->setEvents(self::EVENTS)
         ;
 
-        $response = $this->responseExtractor->normalizeResponse($client->createListener($listener, $shopId));
+        $createResponse = $client->createListener($listener, $shopId);
+        $response = $this->responseExtractor->normalizeResponse($createResponse);
         $hmacKey = $this->findString($response, ['hmac_key', 'hmacKey']);
 
         if (null === $hmacKey) {
-            throw new RuntimeException('PayGreen listener creation did not return an hmac_key.');
+            throw new RuntimeException(sprintf(
+                'PayGreen listener creation did not return an hmac_key%s.',
+                $this->describeFailure($createResponse, $response),
+            ));
         }
 
         return $hmacKey;
@@ -134,6 +139,29 @@ final class ListenerRegistrar
         }
 
         return parse_url($listenerUrl, PHP_URL_HOST) === parse_url($webhookUrl, PHP_URL_HOST);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function describeFailure(mixed $response, array $payload): string
+    {
+        $parts = [];
+        if ($response instanceof ResponseInterface) {
+            $parts[] = sprintf('status %d', $response->getStatusCode());
+        }
+
+        $message = $this->findString($payload, ['message', 'error', 'title', 'detail']);
+        if (null !== $message) {
+            $parts[] = $message;
+        }
+
+        $errors = $this->findByKey($payload, 'errors');
+        if (is_array($errors) && [] !== $errors) {
+            $parts[] = json_encode($errors, JSON_THROW_ON_ERROR);
+        }
+
+        return [] === $parts ? '' : sprintf(' (%s)', implode(': ', $parts));
     }
 
     /**

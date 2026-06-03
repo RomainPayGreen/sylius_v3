@@ -45,11 +45,15 @@ final class GatewayConfigSaveListener
         }
 
         try {
-            $webhookUrl = $this->router->generate(
-                'paygreen_payment_webhook',
-                [],
-                UrlGeneratorInterface::ABSOLUTE_URL,
-            );
+            $webhookUrl = $this->resolveWebhookUrl($config);
+            if ($this->isLocalWebhookUrl($webhookUrl)) {
+                $this->logger->warning('PayGreen listener registration skipped because webhook URL is local.', [
+                    'webhook_url' => $webhookUrl,
+                ]);
+
+                return;
+            }
+
             $client = $this->clientFactory->create($this->normalizeClientConfig($config));
             $hmacKey = $this->listenerRegistrar->register($client, $shopId, $webhookUrl);
 
@@ -80,6 +84,30 @@ final class GatewayConfigSaveListener
     {
         return method_exists($gatewayConfig, 'getFactoryName')
             && PayGreenGatewayFactory::FACTORY_NAME === $gatewayConfig->getFactoryName();
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    private function resolveWebhookUrl(array $config): string
+    {
+        $configuredWebhookUrl = $config['webhook_url'] ?? null;
+        if (is_string($configuredWebhookUrl) && '' !== trim($configuredWebhookUrl)) {
+            return trim($configuredWebhookUrl);
+        }
+
+        return $this->router->generate(
+            'paygreen_payment_webhook',
+            [],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+    }
+
+    private function isLocalWebhookUrl(string $webhookUrl): bool
+    {
+        $host = parse_url($webhookUrl, PHP_URL_HOST);
+
+        return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
     }
 
     /**

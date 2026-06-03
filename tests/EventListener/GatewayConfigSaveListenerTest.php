@@ -85,6 +85,74 @@ final class GatewayConfigSaveListenerTest extends TestCase
         self::assertSame('POST', $httpClient->requests[2]->getMethod());
     }
 
+    public function testItUsesConfiguredWebhookUrlWhenProvided(): void
+    {
+        $httpClient = new GatewayConfigSaveHttpClient([
+            new Response(200, [], $this->json(['data' => ['token' => 'jwt_123']])),
+            new Response(200, [], $this->json(['data' => []])),
+            new Response(200, [], $this->json(['data' => [
+                'id' => 'listener_created',
+                'hmac_key' => 'hmac_created',
+            ]])),
+        ]);
+
+        $router = $this->createMock(UrlGeneratorInterface::class);
+        $router->expects(self::never())->method('generate');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('flush');
+
+        $gatewayConfig = $this->createMock(GatewayConfigInterface::class);
+        $gatewayConfig->method('getGatewayName')->willReturn('paygreen2');
+        $gatewayConfig->method('getFactoryName')->willReturn(PayGreenGatewayFactory::FACTORY_NAME);
+        $gatewayConfig->method('getConfig')->willReturn([
+            'shop_id' => 'sh_123',
+            'secret_key' => 'sk_123',
+            'webhook_url' => 'https://public.example.test/payment/paygreen/webhook',
+            'environment_mode' => Environment::ENVIRONMENT_SANDBOX,
+        ]);
+        $gatewayConfig->expects(self::once())->method('setConfig')->with(self::callback(
+            static fn (array $config): bool => ($config['webhook_secret'] ?? null) === 'hmac_created',
+        ));
+
+        $paymentMethod = $this->createMock(PaymentMethodInterface::class);
+        $paymentMethod->method('getGatewayConfig')->willReturn($gatewayConfig);
+
+        $this->listener($router, $entityManager, $httpClient)->onGatewayConfigSave(new GatewayConfigEvent($paymentMethod));
+
+        $requestBody = json_decode((string) $httpClient->requests[2]->getBody(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame('https://public.example.test/payment/paygreen/webhook', $requestBody['url'] ?? null);
+    }
+
+    public function testItSkipsListenerRegistrationWhenGeneratedWebhookUrlIsLocal(): void
+    {
+        $httpClient = new GatewayConfigSaveHttpClient([]);
+
+        $router = $this->createMock(UrlGeneratorInterface::class);
+        $router->method('generate')->willReturn('http://localhost/payment/paygreen/webhook');
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::never())->method('flush');
+
+        $gatewayConfig = $this->createMock(GatewayConfigInterface::class);
+        $gatewayConfig->method('getGatewayName')->willReturn('paygreen2');
+        $gatewayConfig->method('getFactoryName')->willReturn(PayGreenGatewayFactory::FACTORY_NAME);
+        $gatewayConfig->method('getConfig')->willReturn([
+            'shop_id' => 'sh_123',
+            'secret_key' => 'sk_123',
+            'environment_mode' => Environment::ENVIRONMENT_SANDBOX,
+        ]);
+        $gatewayConfig->expects(self::never())->method('setConfig');
+
+        $paymentMethod = $this->createMock(PaymentMethodInterface::class);
+        $paymentMethod->method('getGatewayConfig')->willReturn($gatewayConfig);
+
+        $this->listener($router, $entityManager, $httpClient)->onGatewayConfigSave(new GatewayConfigEvent($paymentMethod));
+
+        self::assertSame([], $httpClient->requests);
+    }
+
     private function listener(
         UrlGeneratorInterface $router,
         EntityManagerInterface $entityManager,
