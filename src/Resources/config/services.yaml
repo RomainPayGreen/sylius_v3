@@ -1,4 +1,5 @@
 parameters:
+    env(DEFAULT_LISTENER_URI): ''
     paygreen.webhook.verify_status_via_api: false
 
 services:
@@ -73,6 +74,7 @@ services:
     PayGreen\SyliusPayumPlugin\EventListener\GatewayConfigSaveListener:
         arguments:
             $logger: '@monolog.logger.paygreen'
+            $defaultListenerUri: '%env(string:DEFAULT_LISTENER_URI)%'
         tags:
             - { name: kernel.event_listener, event: sylius.payment_method.post_create, method: onGatewayConfigSave }
             - { name: kernel.event_listener, event: sylius.payment_method.post_update, method: onGatewayConfigSave }
