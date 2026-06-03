@@ -11,6 +11,9 @@
         {{ form_row(form.gatewayConfig.config.secret_key) }}
     </div>
     <div class="col-12 col-md-6">
+        {{ form_row(form.gatewayConfig.config.webhook_url) }}
+    </div>
+    <div class="col-12 col-md-6">
         {{ form_row(form.gatewayConfig.config.environment_mode) }}
     </div>
 {% endif %}
