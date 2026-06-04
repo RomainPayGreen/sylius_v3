@@ -75,7 +75,14 @@ The value is meant for environment configuration only; it is not displayed in th
 
 ## Meal vouchers
 
-To flag food products as eligible for meal vouchers, make your Sylius product variant entity implement the plugin interface and use the provided trait:
+Meal voucher eligibility is configured **per product variant**, exactly as in the
+previous PayGreen Sylius plugin. Flagging a variant as eligible adds its amount to
+the PayGreen `eligible_amounts` sent at payment time.
+
+### 1. Make your `ProductVariant` meal-voucher aware
+
+Have your Sylius product variant entity implement the plugin interface and use the
+provided trait:
 
 ```php
 use PayGreen\SyliusPayumPlugin\Entity\MealVoucherAwareInterface;
@@ -88,6 +95,36 @@ class ProductVariant extends BaseProductVariant implements MealVoucherAwareInter
 }
 ```
 
-Then generate and run the Doctrine migration for the `meal_voucher_compatible` boolean column.
+The trait adds a single `meal_voucher_compatible` boolean column (default `false`).
 
-When at least one order item uses an eligible variant, the plugin sends PayGreen V3 `eligible_amounts` for the meal voucher platforms supported by the SDK (`swile`, `restoflash`, `conecs`). API calls still go only through `paygreen/paygreen-php`.
+### 2. Generate and run the Doctrine migration
+
+```bash
+bin/console doctrine:migrations:diff
+bin/console doctrine:migrations:migrate
+```
+
+### 3. Set eligibility in the admin
+
+No template override is required. As soon as your `ProductVariant` implements
+`MealVoucherAwareInterface`, the plugin automatically injects an **"Eligible for meal
+vouchers" checkbox** into the product variant form
+(`Catalog → Products → … → Variants`). Tick it on every variant that can be paid with
+meal vouchers.
+
+> Note: eligibility lives on the **variant**, not the product. For a simple product,
+> Sylius edits its default variant, so the checkbox appears directly on the product
+> edit page.
+
+### How it works
+
+When at least one order item uses an eligible variant, the plugin sends PayGreen V3
+`eligible_amounts` for the meal voucher platforms supported by the SDK (`swile`,
+`restoflash`, `conecs`). API calls still go only through `paygreen/paygreen-php`.
+
+To read a variant's eligibility in your own templates:
+
+```twig
+{% set variant = product|sylius_resolve_variant %}
+{{ variant.mealVoucherCompatible ? 'Payable with meal vouchers' : '' }}
+```

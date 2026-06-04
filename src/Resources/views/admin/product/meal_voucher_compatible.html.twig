@@ -1,0 +1,9 @@
+{#
+ # Renders the PayGreen "eligible for meal vouchers" checkbox on the product
+ # form for simple products, where Sylius embeds the default variant as
+ # `form.variant`. Guarded so it renders nothing for configurable products or
+ # when the variant is not MealVoucherAwareInterface.
+ #}
+{% if form is defined and form.variant is defined and form.variant.mealVoucherCompatible is defined %}
+    {{ form_row(form.variant.mealVoucherCompatible) }}
+{% endif %}
