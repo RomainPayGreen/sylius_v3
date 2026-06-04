@@ -53,25 +53,25 @@ final class PayGreenSyliusPayumPluginExtension extends Extension implements Prep
                 // Sylius 2.x admin: render the meal voucher checkbox in the product variant form.
                 'sylius_admin.product_variant.create.content.form' => [
                     'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/meal_voucher_compatible.html.twig',
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/meal_voucher_compatible.bootstrap.html.twig',
                         'priority' => 0,
                     ],
                 ],
                 'sylius_admin.product_variant.update.content.form' => [
                     'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/meal_voucher_compatible.html.twig',
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/meal_voucher_compatible.bootstrap.html.twig',
                         'priority' => 0,
                     ],
                 ],
                 'sylius_admin.product.create.content.form' => [
                     'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/meal_voucher_compatible.html.twig',
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/meal_voucher_compatible.bootstrap.html.twig',
                         'priority' => 0,
                     ],
                 ],
                 'sylius_admin.product.update.content.form' => [
                     'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/meal_voucher_compatible.html.twig',
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/meal_voucher_compatible.bootstrap.html.twig',
                         'priority' => 0,
                     ],
                 ],
