@@ -118,9 +118,11 @@ meal vouchers.
 
 ### How it works
 
-When at least one order item uses an eligible variant, the plugin sends PayGreen V3
-`eligible_amounts` for the meal voucher platforms supported by the SDK (`swile`,
-`restoflash`, `conecs`). API calls still go only through `paygreen/paygreen-php`.
+When at least one order item uses an eligible variant, the plugin sends the summed
+amount in PayGreen V3 `eligible_amounts` under the **`food`** domain (the domain that
+groups meal voucher platforms such as `swile`, `restoflash` and `conecs`).
+`eligible_amounts` is keyed by domain (`ecommerce`, `travel`, `food`), not by
+platform. API calls still go only through `paygreen/paygreen-php`.
 
 To read a variant's eligibility in your own templates:
 

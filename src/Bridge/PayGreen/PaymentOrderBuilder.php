@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace PayGreen\SyliusPayumPlugin\Bridge\PayGreen;
 
-use Paygreen\Sdk\Payment\V3\Enum\PlatformEnum;
+use Paygreen\Sdk\Payment\V3\Enum\DomainEnum;
 use Paygreen\Sdk\Payment\V3\Model\Address;
 use Paygreen\Sdk\Payment\V3\Model\Buyer;
 use Paygreen\Sdk\Payment\V3\Model\PaymentOrder;
@@ -15,15 +15,6 @@ use Sylius\Component\Core\Model\PaymentInterface;
 
 final class PaymentOrderBuilder
 {
-    /**
-     * @var list<string>
-     */
-    private const MEAL_VOUCHER_PLATFORMS = [
-        PlatformEnum::SWILE,
-        PlatformEnum::RESTOFLASH,
-        PlatformEnum::CONECS,
-    ];
-
     public function __construct(
         private readonly ?MealVoucherEligibilityCalculatorInterface $mealVoucherEligibilityCalculator = null,
     ) {
@@ -126,7 +117,9 @@ final class PaymentOrderBuilder
             return;
         }
 
-        $paymentOrder->setEligibleAmounts(array_fill_keys(self::MEAL_VOUCHER_PLATFORMS, $eligibleAmount));
+        // PayGreen V3 keys eligible_amounts by domain (ecommerce|travel|food),
+        // not by platform. Meal vouchers belong to the "food" domain.
+        $paymentOrder->setEligibleAmounts([DomainEnum::FOOD => $eligibleAmount]);
     }
 
     private function callOptionalSetter(object $object, string $method, mixed $value): void
