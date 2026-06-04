@@ -56,7 +56,7 @@ services:
 
     PayGreen\SyliusPayumPlugin\Form\Extension\ProductVariantTypeExtension:
         tags:
-            - { name: form.type_extension }
+            - { name: form.type_extension, extended_type: Sylius\Bundle\ProductBundle\Form\Type\ProductVariantType }
 
     PayGreen\SyliusPayumPlugin\Controller\ReturnController:
         public: true

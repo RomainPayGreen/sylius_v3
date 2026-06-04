@@ -6,7 +6,7 @@ namespace PayGreen\SyliusPayumPlugin\Tests\Bridge\PayGreen;
 
 use Closure;
 use Doctrine\Common\Collections\ArrayCollection;
-use Paygreen\Sdk\Payment\V3\Enum\PlatformEnum;
+use Paygreen\Sdk\Payment\V3\Enum\DomainEnum;
 use Paygreen\Sdk\Payment\V3\Model\PaymentOrder;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\MealVoucherEligibilityCalculator;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\PaymentOrderBuilder;
@@ -163,9 +163,7 @@ final class PaymentOrderBuilderTest extends TestCase
         ;
 
         self::assertSame([
-            PlatformEnum::SWILE => 3200,
-            PlatformEnum::RESTOFLASH => 3200,
-            PlatformEnum::CONECS => 3200,
+            DomainEnum::FOOD => 3200,
         ], $paymentOrder->getEligibleAmounts());
     }
 
