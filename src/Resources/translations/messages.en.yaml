@@ -7,4 +7,4 @@ paygreen:
         environment_sandbox: Sandbox
         environment_production: Production
     product_variant:
-        meal_voucher_compatible: Eligible for meal vouchers
+        meal_voucher_compatible: Eligible for meal vouchers (PayGreen)
