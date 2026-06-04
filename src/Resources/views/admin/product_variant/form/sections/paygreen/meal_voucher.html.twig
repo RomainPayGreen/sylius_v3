@@ -1,0 +1,7 @@
+{#
+ # Sylius 2.x: meal voucher checkbox inside the PayGreen product variant tab.
+ #}
+{% set form = hookable_metadata.context.form %}
+{% if form.mealVoucherCompatible is defined %}
+    {{ form_row(form.mealVoucherCompatible) }}
+{% endif %}

@@ -1,0 +1,12 @@
+{% if hookable_metadata.context.form.mealVoucherCompatible is defined %}
+    <div class="tab-pane {% if hookable_metadata.configuration.active|default(false) %}show active{% endif %}" id="product-variant-paygreen" role="tabpanel" tabindex="0">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h2 class="card-title">PayGreen</h2>
+            </div>
+            <div class="card-body">
+                {% hook 'paygreen' %}
+            </div>
+        </div>
+    </div>
+{% endif %}

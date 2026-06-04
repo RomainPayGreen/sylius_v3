@@ -20,8 +20,14 @@ final class PayGreenSyliusPayumPluginExtension extends Extension implements Prep
             ]);
         }
 
+        // Sylius 2.x ships sylius_twig_hooks; Sylius 1.x does not. Use it as the
+        // version discriminator: on 2.x the `sylius_ui` extension still exists but
+        // no longer accepts the `events` option, so prepending it there breaks the
+        // whole app.
+        $isSyliusTwoOrHigher = $container->hasExtension('sylius_twig_hooks');
+
         // Sylius 1.x admin: render the meal voucher checkbox through UI template events.
-        if ($container->hasExtension('sylius_ui')) {
+        if (!$isSyliusTwoOrHigher && $container->hasExtension('sylius_ui')) {
             $container->prependExtensionConfig('sylius_ui', [
                 'events' => [
                     'sylius.admin.product_variant.tab_details' => [
@@ -44,34 +50,83 @@ final class PayGreenSyliusPayumPluginExtension extends Extension implements Prep
             ]);
         }
 
-        if (!$container->hasExtension('sylius_twig_hooks')) {
+        if (!$isSyliusTwoOrHigher) {
             return;
         }
 
         $container->prependExtensionConfig('sylius_twig_hooks', [
             'hooks' => [
-                // Sylius 2.x admin: render the meal voucher checkbox in the product variant form.
-                'sylius_admin.product_variant.create.content.form' => [
-                    'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/meal_voucher_compatible.bootstrap.html.twig',
+                // Sylius 2.x admin: dedicated "PayGreen" tab (side navigation + section)
+                // on the product and product variant forms, like other plugins (e.g. Mollie).
+                'sylius_admin.product.create.content.form.side_navigation' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/form/side_navigation/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product.create.content.form.sections' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/form/sections/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product.create.content.form.sections.paygreen' => [
+                    'meal_voucher' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/form/sections/paygreen/meal_voucher.html.twig',
                         'priority' => 0,
                     ],
                 ],
-                'sylius_admin.product_variant.update.content.form' => [
-                    'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/meal_voucher_compatible.bootstrap.html.twig',
+                'sylius_admin.product.update.content.form.side_navigation' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/form/side_navigation/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product.update.content.form.sections' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/form/sections/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product.update.content.form.sections.paygreen' => [
+                    'meal_voucher' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/form/sections/paygreen/meal_voucher.html.twig',
                         'priority' => 0,
                     ],
                 ],
-                'sylius_admin.product.create.content.form' => [
-                    'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/meal_voucher_compatible.bootstrap.html.twig',
+                'sylius_admin.product_variant.create.content.form.side_navigation' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/form/side_navigation/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product_variant.create.content.form.sections' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/form/sections/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product_variant.create.content.form.sections.paygreen' => [
+                    'meal_voucher' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/form/sections/paygreen/meal_voucher.html.twig',
                         'priority' => 0,
                     ],
                 ],
-                'sylius_admin.product.update.content.form' => [
-                    'paygreen_meal_voucher_compatible' => [
-                        'template' => '@PayGreenSyliusPayumPlugin/admin/product/meal_voucher_compatible.bootstrap.html.twig',
+                'sylius_admin.product_variant.update.content.form.side_navigation' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/form/side_navigation/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product_variant.update.content.form.sections' => [
+                    'paygreen' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/form/sections/paygreen.html.twig',
+                        'priority' => -100,
+                    ],
+                ],
+                'sylius_admin.product_variant.update.content.form.sections.paygreen' => [
+                    'meal_voucher' => [
+                        'template' => '@PayGreenSyliusPayumPlugin/admin/product_variant/form/sections/paygreen/meal_voucher.html.twig',
                         'priority' => 0,
                     ],
                 ],
