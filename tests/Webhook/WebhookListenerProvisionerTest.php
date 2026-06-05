@@ -5,33 +5,43 @@ declare(strict_types=1);
 namespace PayGreen\SyliusPayumPlugin\Tests\Webhook;
 
 use GuzzleHttp\Psr7\Response;
-use Http\Client\HttpClient;
 use Paygreen\Sdk\Payment\V3\Client;
 use Paygreen\Sdk\Payment\V3\Environment;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
-use PayGreen\SyliusPayumPlugin\Webhook\ListenerRegistrar;
+use PayGreen\SyliusPayumPlugin\Tests\Double\FakeHttpClient;
+use PayGreen\SyliusPayumPlugin\Webhook\WebhookListenerProvisioner;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 
-final class ListenerRegistrarTest extends TestCase
+final class WebhookListenerProvisionerTest extends TestCase
 {
+    /**
+     * @var list<string>
+     */
+    private const LISTENER_EVENTS = [
+        'payment_order.authorized',
+        'payment_order.successed',
+        'payment_order.canceled',
+        'payment_order.expired',
+        'payment_order.refused',
+        'payment_order.error',
+    ];
+
     public function testItReturnsExistingListenerWithMatchingWebhookUrl(): void
     {
-        $httpClient = new ListenerRegistrarHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json([
                 'data' => [[
                     'id' => 'listener_123',
                     'type' => 'webhook',
                     'url' => 'https://example.test/paygreen/webhook',
-                    'events' => ListenerRegistrarEvents::all(),
+                    'events' => self::LISTENER_EVENTS,
                     'hmac_key' => 'hmac_existing',
                 ]],
             ])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -45,7 +55,7 @@ final class ListenerRegistrarTest extends TestCase
 
     public function testItCreatesListenerWhenNoExistingListenerMatches(): void
     {
-        $httpClient = new ListenerRegistrarHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json(['data' => []])),
             new Response(200, [], $this->json(['data' => [
                 'id' => 'listener_created',
@@ -53,7 +63,7 @@ final class ListenerRegistrarTest extends TestCase
             ]])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -68,13 +78,13 @@ final class ListenerRegistrarTest extends TestCase
 
     public function testItDeletesListenerWithWrongUrlBeforeRecreatingIt(): void
     {
-        $httpClient = new ListenerRegistrarHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json([
                 'data' => [[
                     'id' => 'listener_wrong',
                     'type' => 'webhook',
                     'url' => 'https://example.test/old-paygreen-webhook',
-                    'events' => ListenerRegistrarEvents::all(),
+                    'events' => self::LISTENER_EVENTS,
                     'hmac_key' => 'hmac_old',
                 ]],
             ])),
@@ -85,7 +95,7 @@ final class ListenerRegistrarTest extends TestCase
             ]])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -100,13 +110,13 @@ final class ListenerRegistrarTest extends TestCase
 
     public function testItDoesNotDeleteWebhookListenerFromDifferentHost(): void
     {
-        $httpClient = new ListenerRegistrarHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json([
                 'data' => [[
                     'id' => 'listener_other_host',
                     'type' => 'webhook',
                     'url' => 'https://other-shop.test/paygreen/webhook',
-                    'events' => ListenerRegistrarEvents::all(),
+                    'events' => self::LISTENER_EVENTS,
                     'hmac_key' => 'hmac_other',
                 ]],
             ])),
@@ -116,7 +126,7 @@ final class ListenerRegistrarTest extends TestCase
             ]])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -131,7 +141,7 @@ final class ListenerRegistrarTest extends TestCase
 
     public function testItIncludesPayGreenResponseDetailsWhenListenerCreationDoesNotReturnHmacKey(): void
     {
-        $httpClient = new ListenerRegistrarHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json(['data' => []])),
             new Response(400, [], $this->json([
                 'message' => 'url: Invalid value',
@@ -141,19 +151,19 @@ final class ListenerRegistrarTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('status 400: url: Invalid value');
 
-        $this->registrar()->register(
+        $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'http://localhost/payment/paygreen/webhook',
         );
     }
 
-    private function registrar(): ListenerRegistrar
+    private function provisioner(): WebhookListenerProvisioner
     {
-        return new ListenerRegistrar(new ResponseExtractor());
+        return new WebhookListenerProvisioner(new ResponseExtractor());
     }
 
-    private function client(ListenerRegistrarHttpClient $httpClient): Client
+    private function client(FakeHttpClient $httpClient): Client
     {
         $client = new Client($httpClient, new Environment('sh_123', 'sk_123', Environment::ENVIRONMENT_SANDBOX));
         $client->setBearer('jwt_123');
@@ -167,45 +177,5 @@ final class ListenerRegistrarTest extends TestCase
     private function json(array $payload): string
     {
         return json_encode($payload, JSON_THROW_ON_ERROR);
-    }
-}
-
-final class ListenerRegistrarEvents
-{
-    /**
-     * @return list<string>
-     */
-    public static function all(): array
-    {
-        return [
-            'payment_order.authorized',
-            'payment_order.successed',
-            'payment_order.canceled',
-            'payment_order.expired',
-            'payment_order.refused',
-            'payment_order.error',
-        ];
-    }
-}
-
-final class ListenerRegistrarHttpClient implements HttpClient
-{
-    /**
-     * @var list<RequestInterface>
-     */
-    public array $requests = [];
-
-    /**
-     * @param list<ResponseInterface> $responses
-     */
-    public function __construct(private array $responses)
-    {
-    }
-
-    public function sendRequest(RequestInterface $request): ResponseInterface
-    {
-        $this->requests[] = $request;
-
-        return array_shift($this->responses) ?? new Response(200, [], '{}');
     }
 }

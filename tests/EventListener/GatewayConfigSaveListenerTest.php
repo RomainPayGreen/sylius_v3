@@ -6,16 +6,14 @@ namespace PayGreen\SyliusPayumPlugin\Tests\EventListener;
 
 use Doctrine\ORM\EntityManagerInterface;
 use GuzzleHttp\Psr7\Response;
-use Http\Client\HttpClient;
 use Paygreen\Sdk\Payment\V3\Environment;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
 use PayGreen\SyliusPayumPlugin\EventListener\GatewayConfigSaveListener;
 use PayGreen\SyliusPayumPlugin\Payum\Factory\PayGreenGatewayFactory;
-use PayGreen\SyliusPayumPlugin\Webhook\ListenerRegistrar;
+use PayGreen\SyliusPayumPlugin\Tests\Double\FakeHttpClient;
+use PayGreen\SyliusPayumPlugin\Webhook\WebhookListenerProvisioner;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Log\NullLogger;
 use Sylius\Component\Payment\Model\GatewayConfigInterface;
 use Sylius\Component\Payment\Model\PaymentMethodInterface;
@@ -43,7 +41,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
 
     public function testItStoresWebhookSecretAfterPayGreenGatewaySave(): void
     {
-        $httpClient = new GatewayConfigSaveHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json(['data' => ['token' => 'jwt_123']])),
             new Response(200, [], $this->json(['data' => []])),
             new Response(200, [], $this->json(['data' => [
@@ -87,7 +85,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
 
     public function testItIgnoresLegacyConfiguredWebhookUrlAndUsesGeneratedWebhookUrl(): void
     {
-        $httpClient = new GatewayConfigSaveHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json(['data' => ['token' => 'jwt_123']])),
             new Response(200, [], $this->json(['data' => []])),
             new Response(200, [], $this->json(['data' => [
@@ -132,7 +130,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
 
     public function testItUsesDefaultListenerUriAsBaseWhenConfigured(): void
     {
-        $httpClient = new GatewayConfigSaveHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json(['data' => ['token' => 'jwt_123']])),
             new Response(200, [], $this->json(['data' => []])),
             new Response(200, [], $this->json(['data' => [
@@ -180,7 +178,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
 
     public function testItUsesDefaultListenerUriAsFullWebhookUrlWhenConfigured(): void
     {
-        $httpClient = new GatewayConfigSaveHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], $this->json(['data' => ['token' => 'jwt_123']])),
             new Response(200, [], $this->json(['data' => []])),
             new Response(200, [], $this->json(['data' => [
@@ -222,7 +220,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
 
     public function testItSkipsListenerRegistrationWhenGeneratedWebhookUrlIsLocal(): void
     {
-        $httpClient = new GatewayConfigSaveHttpClient([]);
+        $httpClient = new FakeHttpClient([]);
 
         $router = $this->createMock(UrlGeneratorInterface::class);
         $router->method('generate')->willReturn('http://localhost/payment/paygreen/webhook');
@@ -251,12 +249,12 @@ final class GatewayConfigSaveListenerTest extends TestCase
     private function listener(
         UrlGeneratorInterface $router,
         EntityManagerInterface $entityManager,
-        ?GatewayConfigSaveHttpClient $httpClient = null,
+        ?FakeHttpClient $httpClient = null,
         string $defaultListenerUri = '',
     ): GatewayConfigSaveListener {
         return new GatewayConfigSaveListener(
-            new ClientFactory($httpClient ?? new GatewayConfigSaveHttpClient([])),
-            new ListenerRegistrar(new ResponseExtractor()),
+            new ClientFactory($httpClient ?? new FakeHttpClient([])),
+            new WebhookListenerProvisioner(new ResponseExtractor()),
             $router,
             $entityManager,
             new NullLogger(),
@@ -282,27 +280,5 @@ final class GatewayConfigEvent
     public function getSubject(): mixed
     {
         return $this->subject;
-    }
-}
-
-final class GatewayConfigSaveHttpClient implements HttpClient
-{
-    /**
-     * @var list<RequestInterface>
-     */
-    public array $requests = [];
-
-    /**
-     * @param list<ResponseInterface> $responses
-     */
-    public function __construct(private array $responses)
-    {
-    }
-
-    public function sendRequest(RequestInterface $request): ResponseInterface
-    {
-        $this->requests[] = $request;
-
-        return array_shift($this->responses) ?? new Response(200, [], '{}');
     }
 }

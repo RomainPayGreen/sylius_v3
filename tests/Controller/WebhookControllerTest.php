@@ -6,17 +6,14 @@ namespace PayGreen\SyliusPayumPlugin\Tests\Controller;
 
 use Doctrine\ORM\EntityManagerInterface;
 use GuzzleHttp\Psr7\Response as Psr7Response;
-use Http\Client\HttpClient;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
 use PayGreen\SyliusPayumPlugin\Controller\WebhookController;
-use PayGreen\SyliusPayumPlugin\Lock\LockFactoryInterface;
 use PayGreen\SyliusPayumPlugin\Status\PayGreenStatusMapper;
+use PayGreen\SyliusPayumPlugin\Tests\Double\FakeHttpClient;
 use Payum\Core\GatewayInterface;
 use Payum\Core\Payum;
 use Payum\Core\Request\Notify;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Log\AbstractLogger;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -24,9 +21,10 @@ use Sylius\Component\Core\Model\PaymentInterface;
 use Sylius\Component\Core\Repository\PaymentRepositoryInterface;
 use Sylius\Component\Payment\Model\GatewayConfigInterface;
 use Sylius\Component\Payment\Model\PaymentMethodInterface;
-use PayGreen\SyliusPayumPlugin\Lock\LockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 
 final class WebhookControllerTest extends TestCase
 {
@@ -118,7 +116,7 @@ final class WebhookControllerTest extends TestCase
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush');
 
-        $lockFactory = new InMemoryLockFactory();
+        $lockFactory = new LockFactory(new InMemoryStore());
 
         $request = new Request([], [], [], [], [], [], $content);
         $request->headers->set('signature', $signature);
@@ -126,10 +124,9 @@ final class WebhookControllerTest extends TestCase
         $response = $this->createController($payum, $paymentRepository, $entityManager, $lockFactory)($request);
 
         self::assertSame(Response::HTTP_ACCEPTED, $response->getStatusCode());
-        self::assertSame('paygreen_webhook_po_123', $lockFactory->locks[0]->key);
-        self::assertSame(10.0, $lockFactory->locks[0]->ttl);
-        self::assertFalse($lockFactory->locks[0]->autoRelease);
-        self::assertSame(1, $lockFactory->locks[0]->releaseCalls);
+        // The controller must release the lock once processing succeeds, so the
+        // same key can be acquired again afterwards.
+        self::assertTrue($lockFactory->createLock('paygreen_webhook_po_123', 10.0, false)->acquire());
     }
 
     public function testItReturnsAcceptedWhenWebhookIsAlreadyLocked(): void
@@ -153,16 +150,23 @@ final class WebhookControllerTest extends TestCase
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::never())->method('flush');
 
-        $lockFactory = new InMemoryLockFactory(false);
+        $lockFactory = new LockFactory(new InMemoryStore());
+        // Simulate a concurrent webhook already holding the lock for this order.
+        $heldLock = $lockFactory->createLock('paygreen_webhook_po_123', 10.0, false);
+        self::assertTrue($heldLock->acquire());
 
         $request = new Request([], [], [], [], [], [], $content);
         $request->headers->set('signature', $signature);
 
         $response = $this->createController($payum, $paymentRepository, $entityManager, $lockFactory)($request);
 
+        // The controller could not acquire the lock, so it short-circuits without
+        // touching the payment (enforced by the mock expectations above) and
+        // returns an accepted response. The original lock is still held.
         self::assertSame(Response::HTTP_ACCEPTED, $response->getStatusCode());
-        self::assertSame(1, $lockFactory->locks[0]->acquireCalls);
-        self::assertSame(0, $lockFactory->locks[0]->releaseCalls);
+        self::assertFalse($lockFactory->createLock('paygreen_webhook_po_123', 10.0, false)->acquire());
+
+        $heldLock->release();
     }
 
     public function testItUsesApiStatusWhenStatusVerificationIsEnabledAndApiDiffers(): void
@@ -199,7 +203,7 @@ final class WebhookControllerTest extends TestCase
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush');
 
-        $httpClient = new InMemoryHttpClient([
+        $httpClient = new FakeHttpClient([
             new Psr7Response(200, [], json_encode(['data' => ['token' => 'jwt_123']], JSON_THROW_ON_ERROR)),
             new Psr7Response(200, [], json_encode(['data' => ['id' => 'po_123', 'status' => 'captured']], JSON_THROW_ON_ERROR)),
         ]);
@@ -211,7 +215,7 @@ final class WebhookControllerTest extends TestCase
             $payum,
             $paymentRepository,
             $entityManager,
-            new InMemoryLockFactory(),
+            new LockFactory(new InMemoryStore()),
             new ClientFactory($httpClient),
             new ResponseExtractor(),
             new InMemoryLogger(),
@@ -249,7 +253,7 @@ final class WebhookControllerTest extends TestCase
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('flush')->willThrowException(new RuntimeException('Database is unavailable.'));
 
-        $lockFactory = new InMemoryLockFactory();
+        $lockFactory = new LockFactory(new InMemoryStore());
 
         $request = new Request([], [], [], [], [], [], $content);
         $request->headers->set('signature', $signature);
@@ -257,7 +261,9 @@ final class WebhookControllerTest extends TestCase
         $response = $this->createController($payum, $paymentRepository, $entityManager, $lockFactory)($request);
 
         self::assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
-        self::assertSame(1, $lockFactory->locks[0]->releaseCalls);
+        // Even when processing fails, the lock must be released in the finally
+        // block so the key becomes available again.
+        self::assertTrue($lockFactory->createLock('paygreen_webhook_po_123', 10.0, false)->acquire());
     }
 
     private function createPaymentWithWebhookSecret(string $webhookSecret, ?array $gatewayConfigData = null): PaymentInterface
@@ -279,7 +285,7 @@ final class WebhookControllerTest extends TestCase
         Payum $payum,
         PaymentRepositoryInterface $paymentRepository,
         EntityManagerInterface $entityManager,
-        ?InMemoryLockFactory $lockFactory = null,
+        ?LockFactory $lockFactory = null,
         ?ClientFactory $clientFactory = null,
         ?ResponseExtractor $responseExtractor = null,
         ?InMemoryLogger $logger = null,
@@ -292,71 +298,10 @@ final class WebhookControllerTest extends TestCase
             new PayGreenStatusMapper(),
             $clientFactory ?? new ClientFactory(),
             $responseExtractor ?? new ResponseExtractor(),
-            $lockFactory ?? new InMemoryLockFactory(),
+            $lockFactory ?? new LockFactory(new InMemoryStore()),
             $logger ?? new InMemoryLogger(),
             $verifyStatusViaApi,
         );
-    }
-}
-
-final class InMemoryLockFactory implements LockFactoryInterface
-{
-    /**
-     * @var list<InMemoryLock>
-     */
-    public array $locks = [];
-
-    public function __construct(private readonly bool $acquired = true)
-    {
-    }
-
-    public function createLock(string $key, float $ttl, bool $autoRelease): LockInterface
-    {
-        $lock = new InMemoryLock($key, $ttl, $autoRelease, $this->acquired);
-        $this->locks[] = $lock;
-
-        return $lock;
-    }
-}
-
-final class InMemoryLock implements LockInterface
-{
-    public int $acquireCalls = 0;
-    public int $releaseCalls = 0;
-
-    public function __construct(
-        public readonly string $key,
-        public readonly float $ttl,
-        public readonly bool $autoRelease,
-        private readonly bool $acquired,
-    ) {
-    }
-
-    public function acquire(): bool
-    {
-        ++$this->acquireCalls;
-
-        return $this->acquired;
-    }
-
-    public function release(): void
-    {
-        ++$this->releaseCalls;
-    }
-}
-
-final class InMemoryHttpClient implements HttpClient
-{
-    /**
-     * @param list<ResponseInterface> $responses
-     */
-    public function __construct(private array $responses)
-    {
-    }
-
-    public function sendRequest(RequestInterface $request): ResponseInterface
-    {
-        return array_shift($this->responses) ?? new Psr7Response(200, [], '{}');
     }
 }
 

@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace PayGreen\SyliusPayumPlugin\Tests\Form\Type;
 
 use GuzzleHttp\Psr7\Response;
-use Http\Client\HttpClient;
 use Paygreen\Sdk\Payment\V3\Environment;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
 use PayGreen\SyliusPayumPlugin\Form\Type\PayGreenGatewayConfigurationType;
+use PayGreen\SyliusPayumPlugin\Tests\Double\FakeHttpClient;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Test\Traits\ValidatorExtensionTrait;
@@ -116,7 +115,7 @@ final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
     private function validateGatewayConfig(array $config, array $responses): ConstraintViolationListInterface
     {
         $formType = new PayGreenGatewayConfigurationType(new ClientFactory(
-            new PayGreenGatewayConfigurationHttpClient($responses),
+            new FakeHttpClient($responses),
         ));
 
         return Validation::createValidator()->validate(
@@ -132,20 +131,5 @@ final class PayGreenGatewayConfigurationTypeTest extends TypeTestCase
     private function json(array $payload): string
     {
         return json_encode($payload, JSON_THROW_ON_ERROR);
-    }
-}
-
-final class PayGreenGatewayConfigurationHttpClient implements HttpClient
-{
-    /**
-     * @param list<ResponseInterface> $responses
-     */
-    public function __construct(private array $responses)
-    {
-    }
-
-    public function sendRequest(RequestInterface $request): ResponseInterface
-    {
-        return array_shift($this->responses) ?? new Response(200, [], '{}');
     }
 }
