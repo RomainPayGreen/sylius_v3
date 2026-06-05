@@ -10,7 +10,7 @@ use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 
-final class ListenerRegistrar
+final class WebhookListenerProvisioner
 {
     private const LISTENER_TYPE = 'webhook';
 
@@ -30,7 +30,7 @@ final class ListenerRegistrar
     {
     }
 
-    public function register(Client $client, string $shopId, string $webhookUrl): string
+    public function provision(Client $client, string $shopId, string $webhookUrl): string
     {
         $listeners = $this->extractListeners($this->responseExtractor->normalizeResponse($client->listListener($shopId)));
 

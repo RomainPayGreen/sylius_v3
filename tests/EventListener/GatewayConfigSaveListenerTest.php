@@ -12,7 +12,7 @@ use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
 use PayGreen\SyliusPayumPlugin\EventListener\GatewayConfigSaveListener;
 use PayGreen\SyliusPayumPlugin\Payum\Factory\PayGreenGatewayFactory;
 use PayGreen\SyliusPayumPlugin\Tests\Double\FakeHttpClient;
-use PayGreen\SyliusPayumPlugin\Webhook\ListenerRegistrar;
+use PayGreen\SyliusPayumPlugin\Webhook\WebhookListenerProvisioner;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Sylius\Component\Payment\Model\GatewayConfigInterface;
@@ -254,7 +254,7 @@ final class GatewayConfigSaveListenerTest extends TestCase
     ): GatewayConfigSaveListener {
         return new GatewayConfigSaveListener(
             new ClientFactory($httpClient ?? new FakeHttpClient([])),
-            new ListenerRegistrar(new ResponseExtractor()),
+            new WebhookListenerProvisioner(new ResponseExtractor()),
             $router,
             $entityManager,
             new NullLogger(),

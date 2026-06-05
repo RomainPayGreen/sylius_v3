@@ -9,11 +9,11 @@ use Paygreen\Sdk\Payment\V3\Client;
 use Paygreen\Sdk\Payment\V3\Environment;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ResponseExtractor;
 use PayGreen\SyliusPayumPlugin\Tests\Double\FakeHttpClient;
-use PayGreen\SyliusPayumPlugin\Webhook\ListenerRegistrar;
+use PayGreen\SyliusPayumPlugin\Webhook\WebhookListenerProvisioner;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-final class ListenerRegistrarTest extends TestCase
+final class WebhookListenerProvisionerTest extends TestCase
 {
     /**
      * @var list<string>
@@ -41,7 +41,7 @@ final class ListenerRegistrarTest extends TestCase
             ])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -63,7 +63,7 @@ final class ListenerRegistrarTest extends TestCase
             ]])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -95,7 +95,7 @@ final class ListenerRegistrarTest extends TestCase
             ]])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -126,7 +126,7 @@ final class ListenerRegistrarTest extends TestCase
             ]])),
         ]);
 
-        $hmacKey = $this->registrar()->register(
+        $hmacKey = $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'https://example.test/paygreen/webhook',
@@ -151,16 +151,16 @@ final class ListenerRegistrarTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('status 400: url: Invalid value');
 
-        $this->registrar()->register(
+        $this->provisioner()->provision(
             $this->client($httpClient),
             'sh_123',
             'http://localhost/payment/paygreen/webhook',
         );
     }
 
-    private function registrar(): ListenerRegistrar
+    private function provisioner(): WebhookListenerProvisioner
     {
-        return new ListenerRegistrar(new ResponseExtractor());
+        return new WebhookListenerProvisioner(new ResponseExtractor());
     }
 
     private function client(FakeHttpClient $httpClient): Client

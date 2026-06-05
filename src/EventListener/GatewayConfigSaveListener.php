@@ -8,7 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Paygreen\Sdk\Payment\V3\Environment;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
 use PayGreen\SyliusPayumPlugin\Payum\Factory\PayGreenGatewayFactory;
-use PayGreen\SyliusPayumPlugin\Webhook\ListenerRegistrar;
+use PayGreen\SyliusPayumPlugin\Webhook\WebhookListenerProvisioner;
 use Psr\Log\LoggerInterface;
 use Sylius\Component\Payment\Model\PaymentMethodInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -17,7 +17,7 @@ final class GatewayConfigSaveListener
 {
     public function __construct(
         private readonly ClientFactory $clientFactory,
-        private readonly ListenerRegistrar $listenerRegistrar,
+        private readonly WebhookListenerProvisioner $listenerProvisioner,
         private readonly UrlGeneratorInterface $router,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
@@ -56,7 +56,7 @@ final class GatewayConfigSaveListener
             }
 
             $client = $this->clientFactory->create($this->normalizeClientConfig($config));
-            $hmacKey = $this->listenerRegistrar->register($client, $shopId, $webhookUrl);
+            $hmacKey = $this->listenerProvisioner->provision($client, $shopId, $webhookUrl);
             unset($config['webhook_url']);
 
             $gatewayConfig->setConfig(array_merge($config, ['webhook_secret' => $hmacKey]));
