@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace PayGreen\SyliusPayumPlugin\Tests\Bridge\PayGreen;
 
 use GuzzleHttp\Psr7\Response;
-use Http\Client\HttpClient;
 use PayGreen\SyliusPayumPlugin\Bridge\PayGreen\ClientFactory;
+use PayGreen\SyliusPayumPlugin\Tests\Double\FakeHttpClient;
 use Paygreen\Sdk\Payment\V3\Environment;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 
 final class ClientFactoryTest extends TestCase
 {
     public function testItAuthenticatesTheSdkClientBeforeUsingIt(): void
     {
-        $httpClient = new InMemoryHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], json_encode(['data' => ['token' => 'jwt_123']], JSON_THROW_ON_ERROR)),
             new Response(200, [], '{}'),
         ]);
@@ -37,7 +35,7 @@ final class ClientFactoryTest extends TestCase
 
     public function testItReusesBearerTokenForTheSameShopAndEnvironment(): void
     {
-        $httpClient = new InMemoryHttpClient([
+        $httpClient = new FakeHttpClient([
             new Response(200, [], json_encode(['data' => ['token' => 'jwt_123']], JSON_THROW_ON_ERROR)),
             new Response(200, [], '{}'),
             new Response(200, [], '{}'),
@@ -59,27 +57,5 @@ final class ClientFactoryTest extends TestCase
         self::assertSame('Bearer jwt_123', $httpClient->requests[1]->getHeaderLine('Authorization'));
         self::assertSame('/payment/payment-orders/po_456', $httpClient->requests[2]->getUri()->getPath());
         self::assertSame('Bearer jwt_123', $httpClient->requests[2]->getHeaderLine('Authorization'));
-    }
-}
-
-final class InMemoryHttpClient implements HttpClient
-{
-    /**
-     * @var list<RequestInterface>
-     */
-    public array $requests = [];
-
-    /**
-     * @param list<ResponseInterface> $responses
-     */
-    public function __construct(private array $responses)
-    {
-    }
-
-    public function sendRequest(RequestInterface $request): ResponseInterface
-    {
-        $this->requests[] = $request;
-
-        return array_shift($this->responses) ?? new Response(200, [], '{}');
     }
 }
