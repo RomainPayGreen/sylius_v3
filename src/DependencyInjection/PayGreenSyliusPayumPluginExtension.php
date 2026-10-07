@@ -21,7 +21,9 @@ final class PayGreenSyliusPayumPluginExtension extends Extension implements Prep
         }
 
         // Sylius 1.x admin: render the meal voucher checkbox through UI template events.
-        if ($container->hasExtension('sylius_ui')) {
+        // On Sylius 2.x the sylius_ui extension still exists but no longer accepts the
+        // "events" option — sylius_twig_hooks is the reliable 2.x discriminant.
+        if ($container->hasExtension('sylius_ui') && !$container->hasExtension('sylius_twig_hooks')) {
             $container->prependExtensionConfig('sylius_ui', [
                 'events' => [
                     'sylius.admin.product_variant.tab_details' => [
