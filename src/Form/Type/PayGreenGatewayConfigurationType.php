@@ -18,8 +18,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 final class PayGreenGatewayConfigurationType extends AbstractType
 {
-    public function __construct(private readonly ?ClientFactory $clientFactory = null)
-    {
+    public function __construct(
+        private readonly ?ClientFactory $clientFactory = null,
+        private readonly string $kernelEnvironment = 'prod',
+    ) {
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -38,12 +40,26 @@ final class PayGreenGatewayConfigurationType extends AbstractType
             ])
             ->add('environment_mode', ChoiceType::class, [
                 'label' => 'paygreen.gateway_configuration.environment',
-                'choices' => [
-                    'paygreen.gateway_configuration.environment_production' => Environment::ENVIRONMENT_PRODUCTION,
-                    'paygreen.gateway_configuration.environment_sandbox' => Environment::ENVIRONMENT_SANDBOX,
-                ],
+                'choices' => $this->buildEnvironmentChoices(),
             ])
         ;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildEnvironmentChoices(): array
+    {
+        $choices = [
+            'paygreen.gateway_configuration.environment_production' => Environment::ENVIRONMENT_PRODUCTION,
+            'paygreen.gateway_configuration.environment_sandbox' => Environment::ENVIRONMENT_SANDBOX,
+        ];
+
+        if ('dev' === $this->kernelEnvironment) {
+            $choices['paygreen.gateway_configuration.environment_recette'] = Environment::ENVIRONMENT_RECETTE;
+        }
+
+        return $choices;
     }
 
     public function configureOptions(OptionsResolver $resolver): void

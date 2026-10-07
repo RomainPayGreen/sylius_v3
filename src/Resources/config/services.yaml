@@ -43,6 +43,8 @@ services:
             - { name: payum.action, factory: paygreen, alias: payum.action.status }
 
     PayGreen\SyliusPayumPlugin\Form\Type\PayGreenGatewayConfigurationType:
+        arguments:
+            $kernelEnvironment: '%kernel.environment%'
         tags:
             - { name: sylius.gateway_configuration_type, type: paygreen, label: PayGreen }
             - { name: form.type }
